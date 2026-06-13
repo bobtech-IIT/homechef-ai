@@ -1,11 +1,35 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { clearAICache, getAIStatus } from '../utils/puterAI';
+import { clearAICache, getAIStatus, getBYOK, saveBYOK, clearBYOK } from '../utils/puterAI';
 
 export default function SettingsPanel({ isOpen, onClose }) {
   const { state, dispatch } = useApp();
   const { profile } = state;
   const [resetConfirm, setResetConfirm] = useState(false);
+
+  // BYOK state
+  const existingBYOK = getBYOK();
+  const [byokProvider, setByokProvider] = useState(existingBYOK?.provider || 'openai');
+  const [byokKey, setByokKey] = useState(existingBYOK?.key || '');
+  const [byokSaved, setByokSaved] = useState(!!existingBYOK);
+  const [byokVisible, setByokVisible] = useState(false);
+
+  const handleSaveBYOK = () => {
+    if (!byokKey.trim() || byokKey.trim().length < 10) {
+      alert('Please enter a valid API key.');
+      return;
+    }
+    saveBYOK(byokProvider, byokKey.trim());
+    setByokSaved(true);
+    alert(`✅ ${byokProvider === 'openai' ? 'OpenAI' : 'Gemini'} key saved! AI will now use your key as primary source.`);
+  };
+
+  const handleClearBYOK = () => {
+    clearBYOK();
+    setByokKey('');
+    setByokSaved(false);
+    alert('BYOK key removed. Falling back to Puter guest AI.');
+  };
 
   if (!isOpen) return null;
 
@@ -131,6 +155,69 @@ export default function SettingsPanel({ isOpen, onClose }) {
             </button>
             <p style={{ fontSize: '10px', color: '#7A5540', marginTop: '4px' }}>
               Archetype transforms every RAG retrieval.
+            </p>
+          </div>
+
+          {/* BYOK — Bring Your Own Key */}
+          <div style={styles.section}>
+            <h4 style={styles.sectionTitle}>🔑 AI Key (BYOK)</h4>
+            <p style={{ fontSize: '12px', color: '#7A5540', marginBottom: '4px', lineHeight: '1.45' }}>
+              Add your own OpenAI or Gemini key as a reliable AI fallback when Puter guest is busy or rate-limited.
+            </p>
+            <div style={styles.preferenceRow}>
+              <span style={{ alignSelf: 'center' }}>Provider:</span>
+              <select
+                value={byokProvider}
+                onChange={e => { setByokProvider(e.target.value); setByokSaved(false); }}
+                style={styles.selectInput}
+              >
+                <option value="openai">OpenAI (gpt-4o-mini)</option>
+                <option value="gemini">Gemini (1.5 Flash)</option>
+              </select>
+            </div>
+            <div style={{ position: 'relative', marginTop: '4px' }}>
+              <input
+                type={byokVisible ? 'text' : 'password'}
+                placeholder={byokProvider === 'openai' ? 'sk-...' : 'AIza...'}
+                value={byokKey}
+                onChange={e => { setByokKey(e.target.value); setByokSaved(false); }}
+                style={{
+                  width: '100%',
+                  padding: '8px 36px 8px 10px',
+                  borderRadius: '8px',
+                  border: byokSaved ? '1.5px solid #0D6E4E' : '1px solid rgba(74,44,26,0.2)',
+                  fontFamily: 'Outfit, monospace',
+                  fontSize: '12px',
+                  background: byokSaved ? '#E8F5F0' : '#fff',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <button
+                onClick={() => setByokVisible(v => !v)}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#7A5540' }}
+              >
+                {byokVisible ? '🙈' : '👁️'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+              <button
+                onClick={handleSaveBYOK}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #0D6E4E, #1B7A4E)', color: '#fff', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+              >
+                {byokSaved ? '✅ Key Saved' : 'Save Key'}
+              </button>
+              {byokSaved && (
+                <button
+                  onClick={handleClearBYOK}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(192,57,43,0.3)', background: '#fff', color: '#C0392B', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '10px', color: '#7A5540', marginTop: '4px', lineHeight: '1.4' }}>
+              Key is stored only in your browser. Never sent to our servers.
             </p>
           </div>
 
