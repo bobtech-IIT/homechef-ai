@@ -363,7 +363,7 @@ export default function AIChatPlanner() {
               <div style={styles.headerTitleContainer}>
                 <h3 style={styles.headerTitle}>Nani's AI Rasoi Saathi</h3>
                 <span style={styles.statusLabel}>
-                  {window.puter ? '● AI Assistant Connected' : '● Local Offline Backup Active'}
+                  {navigator.onLine ? '● AI Assistant Connected' : '● Local Offline Backup Active'}
                 </span>
               </div>
             </div>
