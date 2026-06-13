@@ -232,18 +232,14 @@ export default function AIChatPlanner() {
     - Never write long monolithic text clumps. Keep it extremely readable and structured for mobile displays.
     - Do NOT output any raw markdown asterisks (*) or formatting symbols in plain text. Every bullet must render nicely.`;
 
-    // Format the last 8 messages for context in the LLM query to maintain flawless conversation flow
-    const recentHistory = chatHistory
-      .slice(-8)
-      .map(msg => `${msg.sender === 'user' ? 'Beta' : 'Nani'}: ${msg.text}`)
-      .join('\n\n');
-
-    const promptWithHistory = recentHistory
-      ? `Recent Conversation Context:\n${recentHistory}\n\nLatest message to reply to:\nBeta: ${userText}`
-      : userText;
+    // Format the last 8 messages as a message history array
+    const messages = chatHistory.slice(-8).map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text
+    }));
 
     try {
-      const response = await queryAI(promptWithHistory, systemInstruction, 'gpt-4o-mini');
+      const response = await queryAI(messages, systemInstruction, 'gpt-4o-mini');
       const naniMsg = { sender: 'nani', text: response, timestamp: Date.now() };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: naniMsg });
       

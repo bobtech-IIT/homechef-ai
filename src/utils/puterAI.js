@@ -361,19 +361,27 @@ const processQueue = async () => {
 // ─── Public queryAI ───────────────────────────────────────────────────────────
 export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') => {
   return new Promise(async (resolve) => {
-    // Layer 0: Cache
-    const cKey = hashKey(`${prompt}|${systemInstruction}|${model}`);
+    const isArray = Array.isArray(prompt);
+    const userPromptText = isArray ? prompt[prompt.length - 1]?.content || '' : prompt;
+    const cKey = hashKey(`${isArray ? JSON.stringify(prompt) : prompt}|${systemInstruction}|${model}`);
     const cached = getCached(cKey);
     if (cached) return resolve(cached);
 
-    const messages = [];
-    if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
-    messages.push({ role: 'user', content: prompt });
+    let messages = [];
+    if (isArray) {
+      messages = [...prompt];
+      if (systemInstruction && !messages.some(m => m.role === 'system')) {
+        messages.unshift({ role: 'system', content: systemInstruction });
+      }
+    } else {
+      if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+      messages.push({ role: 'user', content: prompt });
+    }
 
     requestQueue.push({
       resolve: (val) => { setCache(cKey, val); resolve(val); },
       reject: () => resolve('Beta, abhi thoda technical issue hai. Ek baar phir try karo! 🙏'),
-      messages, prompt, systemInstruction, model,
+      messages, prompt: userPromptText, systemInstruction, model,
     });
 
     processQueue();
@@ -381,16 +389,9 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 };
 
 // ─── Opt-in Puter Guest Boost (explicit button only, never auto) ──────────────
-let _guestTriggered = false;
 export async function triggerPuterGuestOnce() {
-  if (_guestTriggered) return true;
-  if (typeof window === 'undefined' || !window.puter?.auth) return false;
-  try {
-    if (!window.puter.auth.isSignedIn()) {
-      await window.puter.auth.signIn({ attempt_temp_user_creation: true });
-      updateAIStatus({ status: 'connected', lastMessage: 'Puter guest token active' });
-    }
-    _guestTriggered = true;
-    return true;
-  } catch { return false; }
+  // Headless: We never call Puter's interactive login popup.
+  // Anonymous guest mode is supported natively by our REST handler.
+  updateAIStatus({ status: 'connected', lastMessage: 'Puter guest direct REST active' });
+  return true;
 }

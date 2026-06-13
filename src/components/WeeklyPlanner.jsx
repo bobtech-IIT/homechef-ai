@@ -59,7 +59,7 @@ export default function WeeklyPlanner() {
 
   // WhatsApp Grocery Shopping List Generator (Innovation 6)
   const handleShareToWhatsApp = () => {
-    let listText = `🏡 *HomeChef AI - ${profile.familyName || 'Sharma'} Family Grocery List* 🏡\n`;
+    let listText = `🏡 *HomeChef AI - ${profile.familyName ? (profile.familyName.toLowerCase().includes('family') ? profile.familyName : `${profile.familyName} Family`) : 'My Family'} Grocery List* 🏡\n`;
     listText += `🗓️ _Week Plan: ${DAYS.join(' | ')}_\n\n`;
 
     const allIngredients = new Set();
@@ -213,7 +213,7 @@ export default function WeeklyPlanner() {
               <div className="pdf-print-header" style={styles.pdfHeader}>
                 <h1 className="text-serif" style={styles.pdfLogo}>🥘 HomeChef AI v2</h1>
                 <p style={styles.pdfSubtitle}>
-                  Weekly Thali Meal Plan for the <strong>{profile.familyName || 'Sharma'} Family</strong>
+                  Weekly Thali Meal Plan for the <strong>{profile.familyName ? (profile.familyName.toLowerCase().includes('family') ? profile.familyName : `${profile.familyName} Family`) : 'My Family'}</strong>
                 </p>
                 <span style={styles.pdfDetails}>
                   Cuisine Palate: {profile.regionalPalate.toUpperCase()} • Diet type: {profile.dietType}

@@ -352,7 +352,10 @@ export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
   const archLabel = archetype === 'biohacker' ? 'Biohacker (low-GI / adaptogen)' : 
                     archetype === 'cognitive' ? 'Cognitive (high-protein / brain fuel)' : 'Standard traditional';
   
-  if (q.includes('hello') || q.includes('hi') || q.includes('namaste') || q.includes('suno') || q.includes('dhanyawad')) {
+  const words = q.split(/[^a-zA-Z]+/);
+  const isGreeting = words.includes('hello') || words.includes('hi') || words.includes('namaste') || words.includes('suno') || words.includes('dhanyawad');
+
+  if (isGreeting) {
     const greetExtra = archetype === 'biohacker' 
       ? ' Clean, low-GI choices ke liye best adaptations yaad hain.' 
       : archetype === 'cognitive' 
@@ -363,6 +366,31 @@ export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
 Local intelligence + archetype power se har baar ghar jaisa step-by-step jawab deta hoon — Haryana, Bengal, Punjab, Kerala, sab regions ke liye. ${archLabel} mode active hai.${greetExtra}
 
 Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
+  }
+
+  if (q.includes('siddu') || q.includes('himachal')) {
+    return `Namaste beta! Himachal ka traditional **Siddu** ki recipe abhi batati hoon. Yeh ek steamed yeast bread hai jo bahut hi soft aur swadisht hoti hai.
+
+**📝 Ingredients (4-5 logon ke liye):**
+- Gehun ka aata (Wheat flour) — 2 cups
+- Active dry yeast — 1 tsp
+- Gunguna paani (Warm water) — knead karne ke liye
+- Ghee — serving ke liye
+- **Stuffing paste ke liye:**
+  - Khas khas (Poppy seeds, soaked) — 1/2 cup
+  - Akhrot (Walnuts) — 1/4 cup
+  - Green chilies — 2
+  - Adrak (Ginger) — 1 inch
+  - Dhaniya patta (Coriander) + Namak
+
+**👩‍🍳 Step-by-Step Cooking Steps:**
+1. **Dough prepare karein:** Aata, yeast, thoda namak aur gunguna paani milakar soft dough knead karein. Usko 2-3 ghante ke liye dhaanp kar rakh dein taaki double ho jaye.
+2. **Stuffing banayein:** Poppy seeds, akhrot, green chilies, adrak, dhaniya patta aur namak ko thoda paani daal kar coarse paste grind kar lein.
+3. **Shape karein:** Fermented dough se choti ball banayein, usko haath se failayein, beech mein 2 chamach stuffing paste rakhein aur edges ko fold karke seal kar dein (jaise gujiya/momos).
+4. **Steam karein:** Steamer ko grease karke, siddu ko 15-20 minutes ke liye medium heat par steam karein.
+5. **Serve karein:** Garam-garam siddu ko beech se kaat kar, khoob saara garam desi ghee daal kar serve karein.
+
+Shubh bhojan beta! Himachal ki traditional warmth aapki rasoi mein. 🏔️`;
   }
   
   if (q.includes('expir') || q.includes('inventory') || q.includes('samaan') || q.includes('kharab')) {

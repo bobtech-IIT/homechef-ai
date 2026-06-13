@@ -102,7 +102,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
         <div style={styles.profileCard}>
           <div style={styles.avatar}>🏡</div>
           <div style={styles.profileInfo}>
-            <h3 style={styles.profileName}>{(profile?.familyName || 'Sharma')} Family</h3>
+            <h3 style={styles.profileName}>{profile?.familyName ? (profile.familyName.toLowerCase().includes('family') ? profile.familyName : `${profile.familyName} Family`) : 'My Family'}</h3>
             <span style={styles.profileDetails}>
               {(profile?.regionalPalate || 'general').toUpperCase()} • {profile?.dietType || 'Vegetarian'}
             </span>

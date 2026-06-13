@@ -70,7 +70,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const [isMoodLoading, setIsMoodLoading] = useState(false);
 
   // Prominent, always-visible Family + Archetype Badge (the "VC sees this and gets it" detail)
-  const familyName = profile.familyName || 'Sharma Family Kolkata Non-Veg';
+  const familyName = profile.familyName ? (profile.familyName.toLowerCase().includes('family') ? profile.familyName : `${profile.familyName} Family`) : 'My Family';
   const palateBadge = profile.regionalPalate ? profile.regionalPalate : 'Kolkata';
   const dietBadge = profile.dietType || 'Non-Veg';
   const archetypeBadge = profile.culinaryArchetype === 'biohacker' 
@@ -170,7 +170,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
       <div style={styles.greetingHeader}>
         <div style={styles.headerInfo}>
           <span style={styles.familyTag} className="text-micro">FAMILY</span>
-          <h1 className="text-serif" style={styles.familyName}>{profile?.familyName ? `${profile.familyName} Family` : 'Sharma Family Kolkata Non-Veg'}</h1>
+          <h1 className="text-serif" style={styles.familyName}>{familyName}</h1>
           <span style={styles.profileBadge}>
             {archetypeBadge}
           </span>
