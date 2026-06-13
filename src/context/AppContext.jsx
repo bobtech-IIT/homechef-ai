@@ -11,6 +11,7 @@ const INITIAL_STATE = {
     dietType: 'Vegetarian 🌱',
     occasions: [],
     cuisineInterests: [],
+    culinaryArchetype: 'standard',
     isSetupComplete: false
   },
   inventory: [
@@ -38,6 +39,12 @@ function appReducer(state, action) {
       return {
         ...state,
         profile: { ...state.profile, ...action.payload, isSetupComplete: true }
+      };
+    
+    case 'UPDATE_PROFILE':
+      return {
+        ...state,
+        profile: { ...state.profile, ...action.payload }
       };
     
     case 'ADD_INVENTORY_ITEM':

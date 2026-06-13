@@ -29,6 +29,36 @@ const DEFAULT_SNACKS = [
   { name: "Samosa & Green Chutney 🌶️", isVegetarian: true }
 ];
 
+const VEGAN_BREAKFASTS = [
+  { name: "Poha Batata 🧅🥔", isVegetarian: true },
+  { name: "Rava Upma 🌾", isVegetarian: true },
+  { name: "Masala Idli Fry 🌱", isVegetarian: true },
+  { name: "Methi Thepla (No Ghee) 🫓", isVegetarian: true },
+  { name: "Tofu Bhurji Toast 🍞", isVegetarian: true },
+  { name: "Besan Chilla 🌱", isVegetarian: true },
+  { name: "Oats Porridge (Almond Milk) 🥣", isVegetarian: true }
+];
+
+const VEGAN_SNACKS = [
+  { name: "Black Tea / Ginger Chai (No Milk) ☕", isVegetarian: true },
+  { name: "Roasted Makhana 🪷", isVegetarian: true },
+  { name: "Dhokla Pieces 🫓", isVegetarian: true },
+  { name: "Bhel Puri Bowl 🌽", isVegetarian: true },
+  { name: "Aloo Tikki 🌱", isVegetarian: true },
+  { name: "Sprouted Moong Salad 🥗", isVegetarian: true },
+  { name: "Samosa & Green Chutney 🌶️", isVegetarian: true }
+];
+
+const isVeganRecipe = (recipe) => {
+  const nonVeganKeywords = ['ghee', 'butter', 'milk', 'paneer', 'curd', 'yogurt', 'cream', 'dahi', 'honey', 'egg', 'chicken', 'mutton', 'fish', 'beef', 'cheese', 'malai', 'makhani', 'khoya', 'buttermilk'];
+  const nameMatch = nonVeganKeywords.some(keyword => recipe.name.toLowerCase().includes(keyword));
+  const ingMatch = recipe.ingredients && recipe.ingredients.some(ing => {
+    const ingStr = typeof ing === 'string' ? ing : (ing.name || '');
+    return nonVeganKeywords.some(keyword => ingStr.toLowerCase().includes(keyword));
+  });
+  return !nameMatch && !ingMatch;
+};
+
 // Helper: Shuffle array
 const shuffle = (array) => {
   const arr = [...array];
@@ -56,14 +86,19 @@ export const seedWeeklyMenu = (profile) => {
 
   // Strict lock checks
   const isGujarati = targetPalate === 'gujarat';
-  const isStrictVeg = isGujarati || dietType.toLowerCase().includes('veg');
+  const isVegan = dietType.toLowerCase().includes('vegan');
+  const isStrictVeg = isVegan || isGujarati || dietType.toLowerCase().includes('veg');
 
   // Filter regional & international recipes by vegetarian lock
   const filterVeg = (recipeList) => {
+    let list = recipeList;
     if (isStrictVeg) {
-      return recipeList.filter(r => r.isVegetarian);
+      list = list.filter(r => r.isVegetarian);
     }
-    return recipeList;
+    if (isVegan) {
+      list = list.filter(isVeganRecipe);
+    }
+    return list;
   };
 
   const availableGrandmother = filterVeg(GRANDMOTHER_RECIPES);
@@ -90,11 +125,13 @@ export const seedWeeklyMenu = (profile) => {
 
   const plan = {};
   let mealPoolIndex = 0;
+  const breakfastsList = isVegan ? VEGAN_BREAKFASTS : DEFAULT_BREAKFASTS;
+  const snacksList = isVegan ? VEGAN_SNACKS : DEFAULT_SNACKS;
 
   DAYS.forEach((day, idx) => {
     // Select breakfast & snack from static lists
-    const breakfast = DEFAULT_BREAKFASTS[idx % DEFAULT_BREAKFASTS.length];
-    const snack = DEFAULT_SNACKS[idx % DEFAULT_SNACKS.length];
+    const breakfast = breakfastsList[idx % breakfastsList.length];
+    const snack = snacksList[idx % snacksList.length];
 
     // Select lunch & dinner, ensuring variety
     let lunch = mainMealPool[mealPoolIndex % mainMealPool.length];

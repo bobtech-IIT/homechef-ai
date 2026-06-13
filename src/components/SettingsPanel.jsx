@@ -8,6 +8,20 @@ export default function SettingsPanel({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  const handleDietChange = (e) => {
+    dispatch({
+      type: 'UPDATE_PROFILE',
+      payload: { dietType: e.target.value }
+    });
+  };
+
+  const handleArchetypeChange = (e) => {
+    dispatch({
+      type: 'UPDATE_PROFILE',
+      payload: { culinaryArchetype: e.target.value }
+    });
+  };
+
   const handleHardReset = () => {
     if (!resetConfirm) {
       setResetConfirm(true);
@@ -47,8 +61,29 @@ export default function SettingsPanel({ isOpen, onClose }) {
           <div style={styles.section}>
             <h4 style={styles.sectionTitle}>Active Diet Preferences</h4>
             <div style={styles.preferenceRow}>
-              <span>Diet:</span>
-              <strong style={{ color: '#0D6E4E' }}>{profile.dietType}</strong>
+              <span style={{ alignSelf: 'center' }}>Diet:</span>
+              <select
+                value={profile.dietType}
+                onChange={handleDietChange}
+                style={styles.selectInput}
+              >
+                <option value="Vegetarian 🌱">Vegetarian 🌱</option>
+                <option value="Non-Vegetarian 🍗">Non-Vegetarian 🍗</option>
+                <option value="Jain (No Onion/Garlic) 🧅❌">Jain (No Onion/Garlic) 🧅❌</option>
+                <option value="Vegan 🌱">Vegan 🌱</option>
+              </select>
+            </div>
+            <div style={styles.preferenceRow}>
+              <span style={{ alignSelf: 'center' }}>Culinary Archetype:</span>
+              <select
+                value={profile.culinaryArchetype || 'standard'}
+                onChange={handleArchetypeChange}
+                style={styles.selectInput}
+              >
+                <option value="standard">Standard Household 🏠</option>
+                <option value="biohacker">European VC's Wife (Bio-Hacker) 🌿</option>
+                <option value="cognitive">Shark Tank Judge (Cognitive Hustler) 🔥</option>
+              </select>
             </div>
             <div style={styles.preferenceRow}>
               <span>Cuisine style:</span>
@@ -238,5 +273,17 @@ const styles = {
     textDecoration: 'underline',
     marginTop: '4px',
     alignSelf: 'center'
+  },
+  selectInput: {
+    padding: '6px 10px',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    background: '#fff',
+    fontFamily: 'Outfit, sans-serif',
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#4A2C1A',
+    outline: 'none',
+    cursor: 'pointer'
   }
 };

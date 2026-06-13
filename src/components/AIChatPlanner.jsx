@@ -77,48 +77,13 @@ export default function AIChatPlanner() {
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  
-  // State for the interactive Planner injection drawer
+  const showLoginPrompt = false;
+  const handlePuterLogin = () => {};
+
   const [selectedMsgIndex, setSelectedMsgIndex] = useState(null);
   const [selectedDay, setSelectedDay] = useState('MON');
   const [selectedMeal, setSelectedMeal] = useState('lunch');
   const [toastMessage, setToastMessage] = useState('');
-
-  useEffect(() => {
-    // Check if Puter auth is active
-    if (window.puter && window.puter.auth) {
-      try {
-        if (window.puter.auth.isSignedIn()) {
-          setShowLoginPrompt(false);
-        } else {
-          setShowLoginPrompt(true);
-        }
-      } catch (err) {
-        console.warn("Puter auth check failed, bypassing to ensure smooth experience", err);
-        setShowLoginPrompt(false);
-      }
-    } else {
-      setShowLoginPrompt(false);
-    }
-  }, []);
-
-  const handlePuterLogin = () => {
-    if (window.puter && window.puter.auth) {
-      window.puter.auth.signIn()
-        .then(() => {
-          if (window.puter.auth.isSignedIn()) {
-            setShowLoginPrompt(false);
-          }
-        })
-        .catch(err => {
-          console.warn("Puter auth failed, bypassing to let user in gracefully", err);
-          setShowLoginPrompt(false);
-        });
-    } else {
-      setShowLoginPrompt(false);
-    }
-  };
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -188,6 +153,30 @@ export default function AIChatPlanner() {
       localContextInjected += `CRITICAL INSTRUCTION: You MUST present this exact health drink formulation from Nani's Nuskhe database using the exact home ingredients. Highlight that it is prepared 100% in a ${matchHealth[0].equipment}.\n`;
     }
 
+    // 🧠 Culinary Archetype Injections
+    let archetypeInstruction = "";
+    const archetype = profile.culinaryArchetype || 'standard';
+    if (archetype === 'biohacker') {
+      archetypeInstruction = `
+      [CULINARY ARCHETYPE: European VC's Wife (Bio-Hacker) 🌿]
+      - You MUST transform all ingredients and methods to be Low Glycemic and Clean Eating.
+      - Recommend adaptogenic additions (e.g. Ashwagandha, Turmeric, Ginger, Holy Basil/Tulsi).
+      - Replace standard cooking oils with extra virgin cold-pressed oils (olive, avocado, or virgin coconut oil). No refined sugar, refined flour, or heavy dairy.
+      - Describe the final plating aesthetics as: 'Zen Plating' — minimalist, neat, elegant, natural colors, clean geometry, and high-frequency presentation.`;
+    } else if (archetype === 'cognitive') {
+      archetypeInstruction = `
+      [CULINARY ARCHETYPE: Shark Tank Judge (Cognitive Hustler) 🔥]
+      - You MUST prioritize cognitive enhancement, high protein, and brain stamina.
+      - Incorporate ragi, quinoa, oats, hemp seeds, or ancient grain bases.
+      - Recommend brain-boosting ingredients like Brahmi Ghee, walnut garnishes, flaxseeds, and MCT fats.
+      - Describe the final plating aesthetics as: 'Dramatic Plating' — bold, high-contrast colors, theatrical garnishes, energetic, modern, and striking presentation.`;
+    } else {
+      archetypeInstruction = `
+      [CULINARY ARCHETYPE: Standard Household Mode 🏠]
+      - Suggest standard regional recipe preparations.
+      - Use classic home-cooked ingredients, standard home-style spice levels, and comforting, simple, traditional family-style plating.`;
+    }
+
     const systemInstruction = `You are a warm, traditional, caring Indian grandmother (Nani) named 'HomeChef AI Rasoi Saathi'. 
     Aap family ki daily kitchen decisions aur cooking me madad karte hain. 
     Speak in a warm, culturally authentic Hinglish style (Hindi words written in English alphabet, mixed with conversational English).
@@ -196,6 +185,7 @@ export default function AIChatPlanner() {
     Current Family Profile: Regional Palate is ${profile.regionalPalate} Style, Diet Preference is ${profile.dietType}.
     Active Pantry Stock: ${activePantryStock || 'No active pantry items recorded.'}
     Important Lock: If profile is Gujarati or Vegetarian, strictly suggest only 100% vegetarian recipes. Never mention non-veg ingredients.
+    ${archetypeInstruction}
     ${localContextInjected}
     
     STRICT FORMAT ENFORCEMENTS:
@@ -365,29 +355,7 @@ export default function AIChatPlanner() {
         </div>
       )}
 
-      {showLoginPrompt ? (
-        <div className="puter-login-gate" style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '90%', padding: '40px 24px', textAlign: 'center', gap: '16px' }}>
-          <span style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>🔐</span>
-          <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#1A0E08', fontFamily: 'Outfit, sans-serif', margin: 0 }}>
-            Sign in to start chatting with Homechef AI
-          </h3>
-          <p style={{ fontSize: '13.5px', color: '#7A5540', margin: '4px 0 16px', lineHeight: '1.5' }}>
-            Connect with Google to unlock hyper-personalized meal plans, custom ingredients tracking, and Nani's AI advice!
-          </p>
-          <button onClick={handlePuterLogin} className="google-login-btn">
-            🔐 Sign in with Google Account
-          </button>
-          <div style={{ marginTop: '16px', borderTop: '1px solid rgba(74, 44, 26, 0.1)', paddingTop: '16px', width: '100%' }}>
-            <p className="subtext" style={{ fontSize: '11px', color: '#E8692A', fontWeight: '700', margin: 0 }}>
-              Free Account · No credit card required · Secure Google Sign-in
-            </p>
-            <p style={{ fontSize: '9.5px', color: '#7A5540', marginTop: '6px', lineHeight: '13px' }}>
-              HomeChef AI is fully compliant with Google Play Store guidelines. Your preferences remain secure, private, and local.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
+      <>
           {/* Top AI Status Indicator */}
           <div style={{ ...styles.chatHeader, justifyContent: 'space-between', display: 'flex', width: '100%' }} className="glass-panel">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -596,8 +564,7 @@ export default function AIChatPlanner() {
             </button>
           </div>
         </>
-      )}
-    </div>
+      </div>
   );
 }
 

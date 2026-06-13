@@ -278,39 +278,18 @@ export default function GrandmotherVault() {
               <p style={{ fontSize: '13.5px', color: '#7A5540', lineHeight: '1.5', margin: '0 0 20px 0' }}>
                 Hamarai advanced **Cloud AI Nani** ke paas 200+ aur highly customized natural remedies hain! Bas Nani AI se direct adrak wali chai, acidity remedy, ya koi bhi personal nuskha poochiye!
               </p>
-              {window.puter && window.puter.auth && typeof window.puter.auth.isSignedIn === 'function' && window.puter.auth.isSignedIn() ? (
-                <button
-                  style={styles.handoverActiveBtn}
-                  onClick={() => {
-                    dispatch({
-                      type: 'ADD_CHAT_MESSAGE',
-                      payload: { sender: 'user', text: `Nani, mujhe "${searchQuery || 'Home remedy drink'}" ke liye ek natural home health drink recipe chahiye. mixer me banane ka tarika batayein.`, timestamp: Date.now() }
-                    });
-                    alert("Aapka nuskha request AI Chat me bhej diya gaya hai! Chat tab par switch karke Nani ka live reply dekhein. 👵✨");
-                  }}
-                >
-                  💬 Handover to Nani AI Chat Now!
-                </button>
-              ) : (
-                <button
-                  style={styles.handoverLoginBtn}
-                  onClick={() => {
-                    if (window.puter && window.puter.auth) {
-                      window.puter.auth.signIn()
-                        .then(() => {
-                          alert("Welcome back beta! Sign in successful. Now Nani AI will serve you directly!");
-                        })
-                        .catch(err => {
-                          console.warn("Puter sign-in error:", err);
-                        });
-                    } else {
-                      alert("Offline mode limits. Google auth not reachable.");
-                    }
-                  }}
-                >
-                  🔐 Connect Google Account to Ask Nani AI
-                </button>
-              )}
+              <button
+                style={styles.handoverActiveBtn}
+                onClick={() => {
+                  dispatch({
+                    type: 'ADD_CHAT_MESSAGE',
+                    payload: { sender: 'user', text: `Nani, mujhe "${searchQuery || 'Home remedy drink'}" ke liye ek natural home health drink recipe chahiye. mixer me banane ka tarika batayein.`, timestamp: Date.now() }
+                  });
+                  alert("Aapka nuskha request AI Chat me bhej diya gaya hai! Chat tab par switch karke Nani ka live reply dekhein. 👵✨");
+                }}
+              >
+                💬 Ask Nani AI Chat Now!
+              </button>
             </div>
           )}
         </div>

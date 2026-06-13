@@ -60,7 +60,7 @@ const renderMoodText = (text) => {
   });
 };
 
-export default function HomeDashboard({ onNavigateToTab }) {
+export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const { state } = useApp();
   const { profile, weeklyPlan, nutritionScore } = state;
   const [greeting, setGreeting] = useState('Namaste! 👋');
@@ -178,6 +178,23 @@ export default function HomeDashboard({ onNavigateToTab }) {
             <span>⏱ {recipeOfDay.cookTime}</span>
             <span>📊 {recipeOfDay.difficulty}</span>
             <span>🌱 {recipeOfDay.isVegetarian ? 'Veg' : 'Non-Veg'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Great Indian Thali Map Banner Card */}
+      <div style={styles.thaliBanner} className="glass-card animate-pop" onClick={onOpenThaliMap}>
+        <div style={styles.thaliBannerContent}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>🗺️</span>
+            <span style={styles.thaliTag}>INTERACTIVE VIRTUAL FEAST</span>
+          </div>
+          <h3 className="text-serif" style={styles.thaliTitle}>The Great Indian Thali Explorer</h3>
+          <p style={styles.thaliDesc}>
+            Explore the single most viral signature dish from all 28 States & 8 Union Territories across India.
+          </p>
+          <div style={styles.thaliCTA}>
+            <span>Explore 36 Regional Dishes →</span>
           </div>
         </div>
       </div>
@@ -677,5 +694,43 @@ const styles = {
     fontSize: '15px',
     fontWeight: '700',
     cursor: 'pointer'
+  },
+  thaliBanner: {
+    padding: '20px',
+    borderRadius: '20px',
+    background: 'linear-gradient(135deg, #1E140F 0%, #2C1A11 100%)',
+    border: '1.5px solid #E8692A',
+    color: '#fff',
+    cursor: 'pointer',
+    marginBottom: '24px',
+    boxShadow: '0 8px 24px rgba(232, 105, 42, 0.15)',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    textAlign: 'left'
+  },
+  thaliBannerContent: {
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  thaliTag: {
+    fontSize: '10px',
+    fontWeight: '800',
+    color: '#E8692A',
+    letterSpacing: '1px'
+  },
+  thaliTitle: {
+    fontSize: '22px',
+    margin: '8px 0 6px 0',
+    color: '#FFFFFF'
+  },
+  thaliDesc: {
+    fontSize: '13px',
+    lineHeight: '1.45',
+    color: 'rgba(255, 255, 255, 0.8)',
+    margin: '0 0 12px 0'
+  },
+  thaliCTA: {
+    fontSize: '12px',
+    fontWeight: '800',
+    color: '#E8692A'
   }
 };

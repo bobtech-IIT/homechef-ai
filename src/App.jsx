@@ -8,6 +8,7 @@ import AIChatPlanner from './components/AIChatPlanner';
 import InventoryManager from './components/InventoryManager';
 import GrandmotherVault from './components/GrandmotherVault';
 import SettingsPanel from './components/SettingsPanel';
+import IndianThaliMap from './components/IndianThaliMap';
 
 export default function App() {
   const { state, dispatch } = useApp();
@@ -16,6 +17,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isThaliOpen, setIsThaliOpen] = useState(false);
 
   // Handlers for dynamic tab routing triggers
   const handleTriggerChatPrompt = (promptText) => {
@@ -26,6 +28,10 @@ export default function App() {
     });
     // 2. Switch directly to AI Chat tab (Tab 2)
     setActiveTab(2);
+  };
+
+  const handleSelectThaliRecipe = (dishName) => {
+    handleTriggerChatPrompt(`Nani, mujhe "${dishName}" ki traditional recipe chahiye. Please step-by-step banane ka tarika batayein.`);
   };
 
   // 1. Splash Screen Loader Screen
@@ -53,7 +59,12 @@ export default function App() {
 
       {/* Main Pages Renderer */}
       <main style={styles.mainContent}>
-        {activeTab === 0 && <HomeDashboard onNavigateToTab={(tab) => setActiveTab(tab)} />}
+        {activeTab === 0 && (
+          <HomeDashboard 
+            onNavigateToTab={(tab) => setActiveTab(tab)} 
+            onOpenThaliMap={() => setIsThaliOpen(true)} 
+          />
+        )}
         {activeTab === 1 && <WeeklyPlanner />}
         {activeTab === 2 && <AIChatPlanner />}
         {activeTab === 3 && <InventoryManager onTriggerChatPrompt={handleTriggerChatPrompt} />}
@@ -89,6 +100,14 @@ export default function App() {
           );
         })}
       </nav>
+
+      {/* Great Indian Thali Map Modal Overlay */}
+      {isThaliOpen && (
+        <IndianThaliMap 
+          onClose={() => setIsThaliOpen(false)} 
+          onSelectRecipe={handleSelectThaliRecipe} 
+        />
+      )}
 
       {/* Settings Modal Slider Panel */}
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />

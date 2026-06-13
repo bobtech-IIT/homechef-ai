@@ -28,8 +28,7 @@ export default function SetupWizard() {
     if (step < 5) {
       setStep(step + 1);
     } else if (step === 5) {
-      // Go to Google Login / Offline Activation Step 6
-      setStep(6);
+      handleBypassLogin();
     }
   };
 
@@ -40,23 +39,10 @@ export default function SetupWizard() {
     dispatch({ type: 'SEED_WEEKLY_PLAN', payload: initialPlan });
   };
 
-  const handlePuterLogin = () => {
-    if (window.puter && window.puter.auth) {
-      window.puter.auth.signIn()
-        .then(() => {
-          handleBypassLogin(); // Proceed on success
-        })
-        .catch(err => {
-          console.warn("Puter login failed, continuing to offline mode gracefully", err);
-          handleBypassLogin(); // Graceful fallback
-        });
-    } else {
-      handleBypassLogin();
-    }
-  };
+
 
   const handleBack = () => {
-    if (step > 1 && step < 6) setStep(step - 1);
+    if (step > 1 && step <= 5) setStep(step - 1);
   };
 
   const toggleSelection = (field, value) => {
@@ -73,7 +59,7 @@ export default function SetupWizard() {
     <div style={styles.container} className="animate-fade-in">
       {/* Progress Indicator */}
       <div style={styles.progressContainer}>
-        {[1, 2, 3, 4, 5, 6].map(s => (
+        {[1, 2, 3, 4, 5].map(s => (
           <div
             key={s}
             style={{
@@ -157,8 +143,8 @@ export default function SetupWizard() {
             <h2 className="text-serif" style={styles.title}>Dietary Preference</h2>
             <p style={styles.desc}>Custom meal filter locks will be automatically established.</p>
             <div style={styles.verticalList}>
-              {['Vegetarian 🌱', 'Non-Vegetarian 🍗', 'Jain (No Onion/Garlic) 🧅❌'].map(opt => {
-                const isLocked = formData.regionalPalate === 'gujarat' && opt !== 'Vegetarian 🌱';
+              {['Vegetarian 🌱', 'Non-Vegetarian 🍗', 'Jain (No Onion/Garlic) 🧅❌', 'Vegan 🌱'].map(opt => {
+                const isLocked = formData.regionalPalate === 'gujarat' && opt !== 'Vegetarian 🌱' && opt !== 'Vegan 🌱';
                 return (
                   <button
                     key={opt}
@@ -234,37 +220,8 @@ export default function SetupWizard() {
           </div>
         )}
 
-        {/* STEP 6: Premium Onboarding Activation Google Gate */}
-        {step === 6 && (
-          <div className="animate-pop">
-            <span style={styles.stepNum}>PREMIUM ACTIVATION</span>
-            <h2 className="text-serif" style={styles.title}>Activate Premium AI</h2>
-            <p style={styles.desc}>Sign in with Google to enable Nani's smart personalized AI recommendations, real-time recipe synthesis, and dynamic thali planning.</p>
-            
-            <button 
-              onClick={handlePuterLogin} 
-              className="google-login-btn"
-              style={styles.googleSetupBtn}
-            >
-              🔐 Sign in with Google Account
-            </button>
-
-            <button 
-              onClick={handleBypassLogin} 
-              style={styles.offlineSetupBtn}
-            >
-              🚪 Continue with Offline Local Mode
-            </button>
-            
-            <p style={{ fontSize: '11.5px', color: '#7A5540', marginTop: '24px', textAlign: 'center', lineHeight: '1.45' }}>
-              Offline Mode uses our high-quality built-in heirloom database.<br/>
-              Free Account · Safe & Private · Google Play Store Compliant
-            </p>
-          </div>
-        )}
-
         {/* Buttons Row */}
-        {step < 6 && (
+        {step <= 5 && (
           <div style={styles.btnRow}>
             {step > 1 && (
               <button style={styles.secondaryBtn} onClick={handleBack}>
