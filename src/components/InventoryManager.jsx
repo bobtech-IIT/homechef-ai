@@ -1,455 +1,483 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Search, Thermometer, ShieldAlert, Check, ShoppingBag, AlertOctagon, Pencil } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
-export default function InventoryManager({ items, onAddItem, onRemoveItem, onUpdateItem }) {
-  const [activeSubTab, setActiveSubTab] = useState('Fridge');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Modal/Add form state
+export default function InventoryManager({ onTriggerChatPrompt }) {
+  const { state, dispatch } = useApp();
+  const { inventory } = state;
+  const [activeCategory, setActiveCategory] = useState('Fridge 🧊');
+  const [newItem, setNewItem] = useState({ name: '', quantity: '', category: 'Fridge 🧊', status: 'Fresh' });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemQty, setNewItemQty] = useState('');
-  const [newItemExpiry, setNewItemExpiry] = useState('Fresh');
-  const [newItemCritical, setNewItemCritical] = useState(false);
 
-  // Filter items based on subtab + search query
-  const filteredItems = items.filter(item => {
-    const matchTab = item.category === activeSubTab;
-    const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchTab && matchSearch;
-  });
+  const categories = ['Fridge 🧊', 'Pantry 🌾', 'Spices 🫙'];
 
   const handleAddItem = (e) => {
     e.preventDefault();
-    if (!newItemName.trim()) return;
-    
-    if (editingItem) {
-      onUpdateItem(
-        editingItem.id,
-        newItemName,
-        activeSubTab,
-        newItemQty || '1 unit',
-        newItemExpiry,
-        newItemCritical
-      );
-      setEditingItem(null);
-    } else {
-      onAddItem(
-        newItemName,
-        activeSubTab,
-        newItemQty || '1 unit',
-        newItemExpiry,
-        newItemCritical
-      );
-    }
-    
-    // reset form
-    setNewItemName('');
-    setNewItemQty('');
-    setNewItemExpiry('Fresh');
-    setNewItemCritical(false);
+    if (!newItem.name.trim()) return;
+
+    dispatch({
+      type: 'ADD_INVENTORY_ITEM',
+      payload: newItem
+    });
+    setNewItem({ name: '', quantity: '', category: activeCategory, status: 'Fresh' });
     setShowAddForm(false);
   };
 
-  return (
-    <div className="fade-in-slide" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      
-      {/* Search & Filter Header Controls */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}>
-        {/* Real-time search bar */}
-        <div style={{
-          position: 'relative',
-          width: '100%'
-        }}>
-          <input 
-            type="text"
-            placeholder="Samaan search karein... (e.g. Paneer)"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 16px 12px 42px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-sand)',
-              fontSize: '14px',
-              fontWeight: 600,
-              color: 'var(--text-masala)',
-              backgroundColor: 'var(--bg-card)',
-              outline: 'none',
-              fontFamily: 'inherit'
-            }}
-          />
-          <Search size={18} style={{
-            position: 'absolute',
-            left: '16px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--text-light)'
-          }} />
-        </div>
+  const handleRemoveItem = (id) => {
+    dispatch({ type: 'REMOVE_INVENTORY_ITEM', payload: id });
+  };
 
-        {/* Sub-tabs Row (Fridge, Pantry, Spices) */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          backgroundColor: 'var(--pill-soft)',
-          padding: '4px',
-          borderRadius: '12px',
-          border: '1px solid var(--border-sand)'
-        }}>
-          {['Fridge', 'Pantry', 'Spices'].map(tab => {
-            const isSel = activeSubTab === tab;
-            return (
-              <button 
-                key={tab}
-                type="button"
-                onClick={() => setActiveSubTab(tab)}
-                style={{
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: isSel ? '#FFFFFF' : 'transparent',
-                  color: isSel ? 'var(--primary-saffron)' : 'var(--text-muted)',
-                  fontWeight: isSel ? 800 : 600,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'var(--transition-cozy)',
-                  fontFamily: 'inherit',
-                  boxShadow: isSel ? '0 2px 6px rgba(44, 26, 17, 0.05)' : 'none'
-                }}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', quantity: '', status: 'Fresh', category: '' });
+
+  const handleStartEdit = (item) => {
+    setEditingId(item.id);
+    setEditForm({ name: item.name, quantity: item.quantity, status: item.status, category: item.category });
+  };
+
+  const handleSaveEdit = (id) => {
+    if (!editForm.name.trim()) return;
+    dispatch({
+      type: 'UPDATE_INVENTORY_ITEM',
+      payload: { id, ...editForm }
+    });
+    setEditingId(null);
+  };
+
+  const filteredItems = inventory.filter(item => item.category === activeCategory);
+
+  // Check if there are any expiring soon items (Innovation 3)
+  const expiringSoonItems = inventory.filter(item => item.status === 'Expiring Soon');
+
+  return (
+    <div style={styles.scrollContainer} className="no-scrollbar animate-fade-in">
+      {/* Page Title */}
+      <div style={styles.header}>
+        <h1 className="text-serif" style={styles.title}>Rasoi Inventory</h1>
+        <p style={styles.subtitle}>Manage your ingredients & track fresh items</p>
       </div>
 
-      {/* Critical Alert Bar for low stock items */}
-      {items.some(i => i.category === activeSubTab && i.critical) && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: 'var(--accent-tomato-light)',
-          border: '1px solid rgba(192, 57, 43, 0.2)',
-          borderRadius: '12px',
-          padding: '10px 14px',
-          color: 'var(--accent-tomato)',
-          fontSize: '12px',
-          fontWeight: 700
-        }}>
-          <AlertOctagon size={18} />
-          Some critical items are low or expiring soon! Stock them immediately.
+      {/* Expiry Intelligence Banner (Innovation 3) */}
+      {expiringSoonItems.length > 0 && (
+        <div style={styles.expiryBanner} className="glass-card animate-pop">
+          <span style={styles.expiryTag}>👵 NANI'S ZERO-WASTE RADAR</span>
+          <h4 style={styles.expiryTitle}>Expiring Soon Alert!</h4>
+          <p style={styles.expiryDesc}>
+            Beta, your **{expiringSoonItems.map(i => i.name).join(', ')}** is about to spoil. 
+            Don't let food go to waste! Tap below to ask for a recipe using these ingredients.
+          </p>
+          <button
+            style={styles.expiryActionBtn}
+            onClick={() => onTriggerChatPrompt(`I have ${expiringSoonItems.map(i => i.name).join(' and ')} that are expiring soon. Suggest a quick comforting recipe using them.`)}
+          >
+            💡 Suggest Expiry-Buster Recipe →
+          </button>
         </div>
       )}
 
-      {/* Main Inventory Shelf items list */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }}>
-        {filteredItems.length > 0 ? (
-          filteredItems.map(item => {
-            const isExpiring = item.expiryText === 'Expiring soon';
-            const isRefill = item.expiryText === 'Refill' || item.critical;
-            
-            return (
-              <div 
-                key={item.id}
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  backgroundColor: '#FFFFFF',
-                  border: isRefill 
-                    ? '1.5px solid var(--accent-tomato)' 
-                    : (isExpiring ? '1.5px solid var(--secondary-turmeric)' : '1px solid var(--border-sand)'),
-                  boxShadow: 'var(--shadow-warm)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: 'var(--transition-cozy)'
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <h5 style={{
-                    fontSize: '15px',
-                    fontWeight: 800,
-                    color: 'var(--text-masala)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    {item.name}
-                    
-                    {/* Critical low dot indicator */}
-                    {item.critical && (
-                      <span style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--accent-tomato)',
-                        display: 'inline-block'
-                      }}></span>
-                    )}
-                  </h5>
-                  
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    Quantity: {item.quantity}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {/* Freshness / Stock Badge status indicator */}
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 800,
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-full)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    backgroundColor: isRefill 
-                      ? 'var(--accent-tomato-light)' 
-                      : (isExpiring ? 'var(--secondary-light)' : 'var(--accent-coriander-light)'),
-                    color: isRefill 
-                      ? 'var(--accent-tomato)' 
-                      : (isExpiring ? '#D35400' : 'var(--accent-coriander)'),
-                    border: '1px solid currentColor'
-                  }}>
-                    {isRefill ? 'Refill' : item.expiryText}
-                  </span>
-
-                  {/* Edit button trigger */}
-                  <button 
-                    onClick={() => {
-                      setEditingItem(item);
-                      setNewItemName(item.name);
-                      setNewItemQty(item.quantity);
-                      setNewItemExpiry(item.expiryText);
-                      setNewItemCritical(item.critical);
-                      setShowAddForm(true);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-light)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'var(--transition-cozy)',
-                      marginRight: '6px'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary-saffron)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-light)'}
-                    title="Edit Item"
-                  >
-                    <Pencil size={15} />
-                  </button>
-
-                  {/* Remove button trigger */}
-                  <button 
-                    onClick={() => onRemoveItem(item.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-light)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'var(--transition-cozy)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-tomato)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-light)'}
-                    title="Remove Item"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div style={{
-            padding: '40px 20px',
-            textAlign: 'center',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '12px',
-            border: '1px dashed var(--border-sand)',
-            color: 'var(--text-muted)',
-            fontWeight: 600,
-            fontSize: '13px'
-          }}>
-            No items found in {activeSubTab}. Add some below!
-          </div>
-        )}
+      {/* Category Segmented Control */}
+      <div style={styles.tabsContainer} className="glass-panel">
+        {categories.map(cat => (
+          <button
+            key={cat}
+            style={{
+              ...styles.tabBtn,
+              background: activeCategory === cat ? 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)' : 'transparent',
+              color: activeCategory === cat ? '#fff' : '#4A2C1A',
+              fontWeight: activeCategory === cat ? '700' : '500'
+            }}
+            onClick={() => {
+              setActiveCategory(cat);
+              setNewItem(prev => ({ ...prev, category: cat }));
+            }}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
-      {/* Floating Add Item Form drawer trigger */}
+      {/* Add Item Trigger */}
       {!showAddForm ? (
-        <button 
-          onClick={() => setShowAddForm(true)}
-          className="btn-primary"
-          style={{
-            marginTop: '10px',
-            padding: '12px',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-        >
-          <Plus size={18} />
-          Add Item in {activeSubTab}
+        <button style={styles.addTriggerBtn} className="btn-secondary" onClick={() => setShowAddForm(true)}>
+          ➕ Add New Ingredient
         </button>
       ) : (
-        <form 
-          onSubmit={handleAddItem}
-          className="warm-card fade-in-slide"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-            padding: '20px',
-            border: '1.5px solid var(--primary-saffron)'
-          }}
-        >
-          <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-masala)' }}>
-            {editingItem ? "Edit Ingredient" : `New ${activeSubTab} Ingredient`}
-          </h4>
+        <form onSubmit={handleAddItem} style={styles.addForm} className="glass-card animate-pop">
+          <h4 style={styles.formTitle}>Add New Item</h4>
+          
+          <input
+            type="text"
+            placeholder="Ingredient Name (e.g. Tomato, Milk)"
+            style={styles.formInput}
+            value={newItem.name}
+            onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+            required
+          />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
-            {/* Name Input */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                INGREDIENT NAME
-              </label>
-              <input 
-                type="text" 
-                placeholder="e.g. Fresh Paneer"
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-sand)',
-                  fontFamily: 'inherit',
-                  fontWeight: 600,
-                  outline: 'none',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            {/* Qty Input */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                QUANTITY / WEIGHT
-              </label>
-              <input 
-                type="text" 
-                placeholder="e.g. 200g, 1 Packet, 2 Litres"
-                value={newItemQty}
-                onChange={(e) => setNewItemQty(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-sand)',
-                  fontFamily: 'inherit',
-                  fontWeight: 600,
-                  outline: 'none',
-                  fontSize: '13px'
-                }}
-              />
-            </div>
-
-            {/* Expiry Selector */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                  EXPIRY STATUS
-                </label>
-                <select 
-                  value={newItemExpiry}
-                  onChange={(e) => setNewItemExpiry(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-sand)',
-                    fontFamily: 'inherit',
-                    fontWeight: 600,
-                    outline: 'none',
-                    fontSize: '13px',
-                    backgroundColor: '#FFFFFF'
-                  }}
-                >
-                  <option value="Fresh">Fresh</option>
-                  <option value="Expiring soon">Expiring soon</option>
-                  <option value="Refill">Refill</option>
-                </select>
-              </div>
-
-              {/* Critical Low Stock Option */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--text-masala)', cursor: 'pointer', marginTop: '16px' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={newItemCritical}
-                    onChange={(e) => setNewItemCritical(e.target.checked)}
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      accentColor: 'var(--primary-saffron)'
-                    }}
-                  />
-                  Mark Critical / Low
-                </label>
-              </div>
-            </div>
+          <div style={styles.formRow}>
+            <input
+              type="text"
+              placeholder="Quantity (e.g. 500g, 2L, 4 pieces)"
+              style={{ ...styles.formInput, flex: 1, marginBottom: 0 }}
+              value={newItem.quantity}
+              onChange={e => setNewItem({ ...newItem, quantity: e.target.value })}
+            />
+            
+            <select
+              style={styles.formSelect}
+              value={newItem.status}
+              onChange={e => setNewItem({ ...newItem, status: e.target.value })}
+            >
+              <option value="Fresh">Fresh 🌱</option>
+              <option value="Expiring Soon">Expiring Soon ⚠️</option>
+              <option value="Refill">Refill Needed 🔴</option>
+            </select>
           </div>
 
-          {/* Form Actions */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-            <button 
-              type="button"
-              onClick={() => {
-                setEditingItem(null);
-                setNewItemName('');
-                setNewItemQty('');
-                setNewItemExpiry('Fresh');
-                setNewItemCritical(false);
-                setShowAddForm(false);
-              }}
-              className="btn-secondary"
-              style={{ flex: 1, padding: '10px', fontSize: '13px' }}
-            >
+          <div style={styles.formBtnRow}>
+            <button type="button" style={styles.cancelBtn} onClick={() => setShowAddForm(false)}>
               Cancel
             </button>
-            <button 
-              type="submit"
-              className="btn-primary"
-              style={{ flex: 2, padding: '10px', fontSize: '13px' }}
-            >
-              {editingItem ? "Save Changes" : "Add to shelf"}
+            <button type="submit" style={styles.submitBtn}>
+              Save Item
             </button>
           </div>
         </form>
       )}
 
+      {/* Items List */}
+      <div style={styles.itemsList}>
+        {filteredItems.length === 0 ? (
+          <div style={styles.emptyState}>
+            <span>🫙</span>
+            <p>Aapki list abhi khali hai beta. Add some ingredients above!</p>
+          </div>
+        ) : (
+          filteredItems.map(item => {
+            let badgeBg = '#E8F5F0';
+            let badgeColor = '#0D6E4E';
+            if (item.status === 'Expiring Soon') {
+              badgeBg = '#FEF3DC';
+              badgeColor = '#C4501A';
+            } else if (item.status === 'Refill') {
+              badgeBg = '#FADBD8';
+              badgeColor = '#C0392B';
+            }
+
+            const isEditing = editingId === item.id;
+
+            return (
+              <div key={item.id} style={styles.itemCard} className="glass-card animate-pop">
+                {isEditing ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', textAlign: 'left' }}>
+                    <input
+                      type="text"
+                      style={styles.editInput}
+                      value={editForm.name}
+                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                      placeholder="Item name"
+                    />
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        style={{ ...styles.editInput, flex: 1 }}
+                        value={editForm.quantity}
+                        onChange={e => setEditForm({ ...editForm, quantity: e.target.value })}
+                        placeholder="Quantity"
+                      />
+                      <select
+                        style={styles.editSelect}
+                        value={editForm.status}
+                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                      >
+                        <option value="Fresh">Fresh 🌱</option>
+                        <option value="Expiring Soon">Expiring Soon ⚠️</option>
+                        <option value="Refill">Refill 🔴</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                      <button 
+                        type="button" 
+                        style={{ background: 'none', border: 'none', color: '#7A5540', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button" 
+                        style={{ background: 'linear-gradient(135deg, #0D6E4E 0%, #1B7A4E 100%)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                        onClick={() => handleSaveEdit(item.id)}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={styles.itemLeft}>
+                      <h4 style={styles.itemName}>{item.name}</h4>
+                      <span style={styles.itemQty}>{item.quantity || 'In Stock'}</span>
+                    </div>
+
+                    <div style={styles.itemRight}>
+                      <span
+                        style={{
+                          ...styles.statusBadge,
+                          background: badgeBg,
+                          color: badgeColor
+                        }}
+                      >
+                        {item.status === 'Refill' && <span className="refill-dot">● </span>}
+                        {item.status.toUpperCase()}
+                      </span>
+                      
+                      <button style={styles.deleteBtn} onClick={() => handleStartEdit(item)} title="Edit Item">
+                        ✏️
+                      </button>
+                      
+                      <button style={styles.deleteBtn} onClick={() => handleRemoveItem(item.id)} title="Delete Item">
+                        🗑️
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
+}
+
+const styles = {
+  scrollContainer: {
+    padding: '20px',
+    overflowY: 'auto',
+    flex: 1,
+    background: '#FDF8F2'
+  },
+  header: {
+    marginBottom: '20px'
+  },
+  title: {
+    fontSize: '28px',
+    color: '#1A0E08',
+    margin: 0
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#7A5540'
+  },
+  expiryBanner: {
+    padding: '20px',
+    background: '#FEF3DC',
+    borderLeft: '4px solid #C4501A',
+    marginBottom: '24px',
+    textAlign: 'left'
+  },
+  expiryTag: {
+    fontSize: '10px',
+    fontWeight: '800',
+    color: '#C4501A',
+    letterSpacing: '1.5px',
+    display: 'block',
+    marginBottom: '6px'
+  },
+  expiryTitle: {
+    fontSize: '16px',
+    fontWeight: '800',
+    color: '#1A0E08',
+    marginBottom: '4px'
+  },
+  expiryDesc: {
+    fontSize: '13px',
+    lineHeight: '1.45',
+    color: '#4A2C1A',
+    marginBottom: '12px'
+  },
+  expiryActionBtn: {
+    background: '#E8692A',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    fontSize: '12px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(232, 105, 42, 0.2)'
+  },
+  tabsContainer: {
+    display: 'flex',
+    padding: '6px',
+    borderRadius: '16px',
+    marginBottom: '20px',
+    background: 'rgba(74, 44, 26, 0.04)'
+  },
+  tabBtn: {
+    flex: 1,
+    padding: '12px',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif',
+    transition: 'all 0.2s ease'
+  },
+  addTriggerBtn: {
+    width: '100%',
+    marginBottom: '20px'
+  },
+  addForm: {
+    padding: '20px',
+    background: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginBottom: '20px',
+    textAlign: 'left'
+  },
+  formTitle: {
+    fontSize: '15px',
+    fontWeight: '800',
+    color: '#1A0E08'
+  },
+  formInput: {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '14px',
+    fontFamily: 'Outfit, sans-serif',
+    background: '#fff',
+    outline: 'none',
+    marginBottom: '4px'
+  },
+  formRow: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center'
+  },
+  formSelect: {
+    padding: '12px 16px',
+    borderRadius: '10px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '14px',
+    fontFamily: 'Outfit, sans-serif',
+    background: '#fff',
+    outline: 'none'
+  },
+  formBtnRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '10px',
+    marginTop: '6px'
+  },
+  submitBtn: {
+    background: 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '10px 16px',
+    fontSize: '13px',
+    fontWeight: '700',
+    cursor: 'pointer'
+  },
+  cancelBtn: {
+    background: '#F9F1E5',
+    color: '#4A2C1A',
+    border: '1px solid rgba(74, 44, 26, 0.1)',
+    borderRadius: '8px',
+    padding: '10px 16px',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer'
+  },
+  itemsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  emptyState: {
+    padding: '40px 20px',
+    textAlign: 'center',
+    color: '#7A5540',
+    fontSize: '14px',
+    opacity: 0.8
+  },
+  itemCard: {
+    padding: '16px 20px',
+    background: '#fff',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  itemLeft: {
+    textAlign: 'left'
+  },
+  itemName: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#1A0E08'
+  },
+  itemQty: {
+    fontSize: '12px',
+    color: '#7A5540',
+    marginTop: '2px',
+    display: 'block'
+  },
+  itemRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  statusBadge: {
+    fontSize: '11px',
+    fontWeight: '800',
+    padding: '4px 8px',
+    borderRadius: '10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px'
+  },
+  deleteBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '16px',
+    cursor: 'pointer',
+    padding: '4px'
+  },
+  editInput: {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '14px',
+    fontFamily: 'Outfit, sans-serif',
+    outline: 'none',
+    background: '#fff'
+  },
+  editSelect: {
+    padding: '10px 14px',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '13px',
+    fontFamily: 'Outfit, sans-serif',
+    outline: 'none',
+    background: '#fff'
+  }
+};
+
+// Add critical dot animation
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = `
+    .refill-dot {
+      animation: criticalPulse 2s infinite;
+    }
+    @keyframes criticalPulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(styleSheet);
 }

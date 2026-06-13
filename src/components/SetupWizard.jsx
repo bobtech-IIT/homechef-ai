@@ -1,404 +1,458 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, User, Users, Group, HelpCircle, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
+import { seedWeeklyMenu } from '../utils/mealSeeder';
 
-export default function SetupWizard({ profile, onComplete, onBack }) {
+const CUISINES = ['Punjabi 🌾', 'Gujarati 🫓', 'Bangladeshi (East Bengal) 🇧🇩', 'Kolkata (West Bengal) 🐟', 'Oriya 🦐🌾', 'Maharashtrian 🍛', 'South Indian 🥥', 'Rajasthani 🏜️', 'Italian 🍕', 'Chinese 🍜', 'Mexican 🌮', 'Thai 🌶️'];
+const ALLERGENS = ['Nuts 🥜', 'Dairy 🥛', 'Gluten 🌾', 'Soy 🫘', 'Seafood 🍤'];
+
+export default function SetupWizard() {
+  const { dispatch } = useApp();
   const [step, setStep] = useState(1);
-  
-  // Setup forms matching db entities
-  const [familySize, setFamilySize] = useState(profile.familySize || '3-4');
-  const [palate, setPalate] = useState(profile.regionalPalate || 'Punjab');
-  const [diet, setDiet] = useState(profile.dietaryPreference || 'Non-Vegetarian');
-  const [occasion, setOccasion] = useState(profile.specialOccasion || 'No Preference');
-  const [familyName, setFamilyName] = useState(profile.familyName || 'Sharma');
+  const [formData, setFormData] = useState({
+    familyName: '',
+    familySize: '3-4 Members 👨‍👩‍👧‍👦',
+    regionalPalate: 'general',
+    dietType: 'Vegetarian 🌱',
+    occasions: [],
+    cuisineInterests: []
+  });
+
+  // Gujarati Veg Lock: force diet to Vegetarian if Gujarati palate selected
+  useEffect(() => {
+    if (formData.regionalPalate === 'gujarat') {
+      setFormData(prev => ({ ...prev, dietType: 'Vegetarian 🌱' }));
+    }
+  }, [formData.regionalPalate]);
 
   const handleNext = () => {
-    if (step < 4) {
+    if (step < 5) {
       setStep(step + 1);
-    } else {
-      onComplete(familySize, palate, diet, occasion, familyName);
+    } else if (step === 5) {
+      // Go to Google Login / Offline Activation Step 6
+      setStep(6);
     }
   };
 
-  const handlePrev = () => {
-    if (step > 1) {
-      setStep(step - 1);
+  const handleBypassLogin = () => {
+    // Finalize and seed the weekly meal plan!
+    const initialPlan = seedWeeklyMenu(formData);
+    dispatch({ type: 'COMPLETE_SETUP', payload: formData });
+    dispatch({ type: 'SEED_WEEKLY_PLAN', payload: initialPlan });
+  };
+
+  const handlePuterLogin = () => {
+    if (window.puter && window.puter.auth) {
+      window.puter.auth.signIn()
+        .then(() => {
+          handleBypassLogin(); // Proceed on success
+        })
+        .catch(err => {
+          console.warn("Puter login failed, continuing to offline mode gracefully", err);
+          handleBypassLogin(); // Graceful fallback
+        });
     } else {
-      onBack();
+      handleBypassLogin();
     }
+  };
+
+  const handleBack = () => {
+    if (step > 1 && step < 6) setStep(step - 1);
+  };
+
+  const toggleSelection = (field, value) => {
+    setFormData(prev => {
+      const list = prev[field];
+      const newList = list.includes(value)
+        ? list.filter(item => item !== value)
+        : [...list, value];
+      return { ...prev, [field]: newList };
+    });
   };
 
   return (
-    <div style={{
-      height: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      backgroundColor: 'var(--bg-warm)',
-      position: 'relative'
-    }}>
-      {/* Top Navigation Bar with Warm Progress Indicator */}
-      <div style={{
-        padding: '16px 20px 8px',
-        backgroundColor: 'var(--bg-warm)',
-        borderBottom: '1px solid var(--border-sand)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button 
-            onClick={handlePrev}
+    <div style={styles.container} className="animate-fade-in">
+      {/* Progress Indicator */}
+      <div style={styles.progressContainer}>
+        {[1, 2, 3, 4, 5, 6].map(s => (
+          <div
+            key={s}
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-masala)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center'
+              ...styles.progressBar,
+              background: s <= step ? 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)' : '#E5E4E7',
+              transform: s === step ? 'scaleY(1.5)' : 'none'
             }}
-          >
-            <ArrowLeft size={22} />
-          </button>
-          
-          <h2 style={{ fontSize: '17px', fontWeight: 800 }}>Homechef AI</h2>
-          
-          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-light)' }}>
-            Step {step} of 4
-          </span>
-        </div>
-
-        {/* Linear progress bar */}
-        <div style={{
-          width: '100%',
-          height: '6px',
-          backgroundColor: 'var(--border-sand)',
-          borderRadius: '3px',
-          marginTop: '12px',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            width: `${(step / 4) * 100}%`,
-            height: '100%',
-            backgroundColor: 'var(--primary-saffron)',
-            borderRadius: '3px',
-            transition: 'var(--transition-cozy)'
-          }}></div>
-        </div>
+          ></div>
+        ))}
       </div>
 
-      {/* Wizard Step Body */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '24px 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between'
-      }}>
-        <div>
-          {/* Header titles */}
-          <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-masala)' }}>
-              Tell us about your home.
-            </h3>
-            <p style={{
-              fontSize: '15px',
-              color: 'var(--primary-saffron)',
-              fontWeight: 700,
-              fontStyle: 'italic',
-              marginTop: '4px'
-            }}>
-              "Aapke ghar ka swaad kaisa hai?"
+      <div style={styles.card} className="glass-card animate-slide-up">
+        {step === 1 && (
+          <div>
+            <span style={styles.stepNum}>STEP 1 OF 5</span>
+            <h2 className="text-serif" style={styles.title}>Your Kitchen Identity</h2>
+            <p style={styles.desc}>Let's personalize your HomeChef experience. What is your family's surname?</p>
+            <input
+              type="text"
+              placeholder="e.g. Sharma, Patel, Banerjee"
+              style={styles.input}
+              value={formData.familyName}
+              onChange={e => setFormData({ ...formData, familyName: e.target.value })}
+            />
+            
+            <p style={styles.label}>Family Size</p>
+            <div style={styles.grid}>
+              {['1-2 Members 🍳', '3-4 Members 👨‍👩‍👧‍👦', '5+ Members 🍲'].map(opt => (
+                <button
+                  key={opt}
+                  style={{
+                    ...styles.gridBtn,
+                    borderColor: formData.familySize === opt ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
+                    background: formData.familySize === opt ? '#FEF3DC' : '#fff'
+                  }}
+                  onClick={() => setFormData({ ...formData, familySize: opt })}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <span style={styles.stepNum}>STEP 2 OF 5</span>
+            <h2 className="text-serif" style={styles.title}>Select Regional Palate</h2>
+            <p style={styles.desc}>This aligns the automatic meal seeder with your regional tastes.</p>
+            <div style={styles.verticalList}>
+              {[
+                { id: 'general', name: 'General Indian Classic 🍲' },
+                { id: 'punjab', name: 'Punjabi Dhaba Style 🌾' },
+                { id: 'gujarat', name: 'Gujarati Kathiyawadi 🫓' },
+                { id: 'maharashtra', name: 'Maharashtrian Thali 🍛' },
+                { id: 'bangladesh', name: 'Bangladeshi (East Bengal Cuisines) 🇧🇩🍗' },
+                { id: 'kolkata', name: 'Kolkata (West Bengal Cuisines) 🐟🌾' },
+                { id: 'odisha', name: 'Odisha Oriya Heirloom (Orissa) 🦐🌾' },
+                { id: 'tamilnadu', name: 'Tamil Nadu Kalyana Feast 🥥' },
+                { id: 'kerala', name: 'Kerala Nadan Malabar 🌴' }
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  style={{
+                    ...styles.listBtn,
+                    borderColor: formData.regionalPalate === opt.id ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
+                    background: formData.regionalPalate === opt.id ? '#FEF3DC' : '#fff'
+                  }}
+                  onClick={() => setFormData({ ...formData, regionalPalate: opt.id })}
+                >
+                  {opt.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <span style={styles.stepNum}>STEP 3 OF 5</span>
+            <h2 className="text-serif" style={styles.title}>Dietary Preference</h2>
+            <p style={styles.desc}>Custom meal filter locks will be automatically established.</p>
+            <div style={styles.verticalList}>
+              {['Vegetarian 🌱', 'Non-Vegetarian 🍗', 'Jain (No Onion/Garlic) 🧅❌'].map(opt => {
+                const isLocked = formData.regionalPalate === 'gujarat' && opt !== 'Vegetarian 🌱';
+                return (
+                  <button
+                    key={opt}
+                    disabled={isLocked}
+                    style={{
+                      ...styles.listBtn,
+                      opacity: isLocked ? 0.45 : 1,
+                      borderColor: formData.dietType === opt ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
+                      background: formData.dietType === opt ? '#FEF3DC' : '#fff',
+                      cursor: isLocked ? 'not-allowed' : 'pointer'
+                    }}
+                    onClick={() => !isLocked && setFormData({ ...formData, dietType: opt })}
+                  >
+                    {opt} {isLocked && '🔒 (Gujarati Diet Locked)'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div>
+            <span style={styles.stepNum}>STEP 4 OF 5</span>
+            <h2 className="text-serif" style={styles.title}>Allergens & Preferences</h2>
+            <p style={styles.desc}>We will flag ingredients matching these allergens in the main dashboard.</p>
+            <div style={styles.tagCloud}>
+              {ALLERGENS.map(alg => {
+                const isSelected = formData.occasions.includes(alg);
+                return (
+                  <button
+                    key={alg}
+                    style={{
+                      ...styles.tagBtn,
+                      background: isSelected ? '#C0392B' : '#fff',
+                      color: isSelected ? '#fff' : '#1A0E08',
+                      borderColor: isSelected ? '#C0392B' : 'rgba(74, 44, 26, 0.1)'
+                    }}
+                    onClick={() => toggleSelection('occasions', alg)}
+                  >
+                    {alg}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div>
+            <span style={styles.stepNum}>STEP 5 OF 5</span>
+            <h2 className="text-serif" style={styles.title}>Cuisine Interests</h2>
+            <p style={styles.desc}>What kinds of food does your family love to cook at home?</p>
+            <div style={styles.tagCloud}>
+              {CUISINES.map(c => {
+                const isSelected = formData.cuisineInterests.includes(c);
+                return (
+                  <button
+                    key={c}
+                    style={{
+                      ...styles.tagBtn,
+                      background: isSelected ? '#E8692A' : '#fff',
+                      color: isSelected ? '#fff' : '#1A0E08',
+                      borderColor: isSelected ? '#E8692A' : 'rgba(74, 44, 26, 0.1)'
+                    }}
+                    onClick={() => toggleSelection('cuisineInterests', c)}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 6: Premium Onboarding Activation Google Gate */}
+        {step === 6 && (
+          <div className="animate-pop">
+            <span style={styles.stepNum}>PREMIUM ACTIVATION</span>
+            <h2 className="text-serif" style={styles.title}>Activate Premium AI</h2>
+            <p style={styles.desc}>Sign in with Google to enable Nani's smart personalized AI recommendations, real-time recipe synthesis, and dynamic thali planning.</p>
+            
+            <button 
+              onClick={handlePuterLogin} 
+              className="google-login-btn"
+              style={styles.googleSetupBtn}
+            >
+              🔐 Sign in with Google Account
+            </button>
+
+            <button 
+              onClick={handleBypassLogin} 
+              style={styles.offlineSetupBtn}
+            >
+              🚪 Continue with Offline Local Mode
+            </button>
+            
+            <p style={{ fontSize: '11.5px', color: '#7A5540', marginTop: '24px', textAlign: 'center', lineHeight: '1.45' }}>
+              Offline Mode uses our high-quality built-in heirloom database.<br/>
+              Free Account · Safe & Private · Google Play Store Compliant
             </p>
           </div>
+        )}
 
-          {/* Render Step Cards */}
-          {step === 1 && (
-            <div className="fade-in-slide">
-              <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--text-masala)' }}>
-                How many members in your household?
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                {[
-                  { size: '1-2', icon: <User size={24} /> },
-                  { size: '3-4', icon: <Users size={24} /> },
-                  { size: '5-6', icon: <Group size={24} /> },
-                  { size: '6+', icon: <Users size={24} /> }
-                ].map(item => {
-                  const isSel = familySize === item.size;
-                  return (
-                    <div 
-                      key={item.size}
-                      onClick={() => setFamilySize(item.size)}
-                      style={{
-                        padding: '20px 16px',
-                        border: isSel ? '2px solid var(--text-masala)' : '1px solid var(--border-sand)',
-                        borderRadius: '16px',
-                        backgroundColor: isSel ? 'var(--secondary-turmeric)' : 'var(--bg-card)',
-                        color: 'var(--text-masala)',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: isSel ? 'var(--shadow-hover)' : 'var(--shadow-warm)',
-                        transition: 'var(--transition-cozy)'
-                      }}
-                    >
-                      <div style={{ color: isSel ? 'var(--text-masala)' : 'var(--text-light)', marginBottom: '8px' }}>
-                        {item.icon}
-                      </div>
-                      <span style={{ fontSize: '16px', fontWeight: 800 }}>{item.size}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="fade-in-slide">
-              <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--text-masala)' }}>
-                Which regional taste do you prefer?
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {["Punjab", "Maharashtra", "West Bengal", "Gujarat", "South India"].map(item => {
-                  const isSel = palate === item;
-                  return (
-                    <div 
-                      key={item}
-                      onClick={() => {
-                        setPalate(item);
-                        if (item === 'Gujarat' && diet === 'Non-Vegetarian') {
-                          setDiet('Vegetarian');
-                        }
-                      }}
-                      style={{
-                        padding: '16px 20px',
-                        borderRadius: '16px',
-                        backgroundColor: 'var(--bg-card)',
-                        border: isSel ? '2px solid var(--text-masala)' : '1px solid var(--border-sand)',
-                        boxShadow: 'var(--shadow-warm)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                        fontWeight: 700,
-                        color: 'var(--text-masala)',
-                        transition: 'var(--transition-cozy)'
-                      }}
-                    >
-                      <span>{item} Style</span>
-                      {isSel && (
-                        <div style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--primary-saffron)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#FFFFFF'
-                        }}>
-                          <Check size={14} strokeWidth={3} />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="fade-in-slide">
-              <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--text-masala)' }}>
-                Dietary Preference of Rasoi
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {[
-                  { type: 'Vegetarian', desc: 'Pure veg recipes with traditional roots', color: 'var(--accent-coriander)' },
-                  { type: 'Non-Vegetarian', desc: palate === 'Gujarat' ? 'Locked: Gujarat Style is strictly Veg/Jain/Vegan' : 'Meat, poultry, and seafood specialties', color: 'var(--accent-tomato)', disabled: palate === 'Gujarat' },
-                  { type: 'Jain', desc: 'No onions, garlic, or root vegetables', color: 'var(--primary-saffron)' },
-                  { type: 'Vegan', desc: '100% plant-based: no dairy, honey, eggs, or meat', color: '#8E44AD' }
-                ].map(item => {
-                  const isSel = diet === item.type;
-                  const isDisabled = item.disabled;
-                  return (
-                    <div 
-                      key={item.type}
-                      onClick={() => !isDisabled && setDiet(item.type)}
-                      style={{
-                        padding: '16px',
-                        borderRadius: '16px',
-                        backgroundColor: isDisabled ? 'rgba(0,0,0,0.015)' : 'var(--bg-card)',
-                        border: isSel ? '2px solid var(--text-masala)' : '1px solid var(--border-sand)',
-                        boxShadow: isSel ? 'var(--shadow-hover)' : 'var(--shadow-warm)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        opacity: isDisabled ? 0.5 : 1,
-                        transition: 'var(--transition-cozy)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        {/* Custom visual color code badge representing Compose drawing status */}
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '8px',
-                          backgroundColor: `${item.color}1E`, /* transparent code */
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <div style={{
-                            width: '16px',
-                            height: '16px',
-                            border: `2px solid ${item.color}`,
-                            padding: '2px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            <div style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: item.color
-                            }}></div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h5 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-masala)' }}>
-                            {item.type} {isDisabled && '🔒'}
-                          </h5>
-                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.desc}</p>
-                        </div>
-                      </div>
-
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        border: isSel ? '6px solid var(--text-masala)' : '2px solid var(--border-sand)',
-                        backgroundColor: '#FFFFFF',
-                        transition: 'var(--transition-cozy)'
-                      }}></div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {palate === 'Gujarat' && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '14px 16px',
-                  borderRadius: '16px',
-                  backgroundColor: 'var(--secondary-turmeric)1A',
-                  border: '1.5px solid var(--primary-saffron)',
-                  color: 'var(--text-masala)',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  boxShadow: 'var(--shadow-warm)'
-                }}>
-                  <span style={{ fontSize: '18px' }}>🥦</span>
-                  <span>Gujarat regional palate is strictly Vegetarian, Jain, or Vegan. Non-Vegetarian has been locked.</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="fade-in-slide">
-              <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--text-masala)' }}>
-                Occasions & Surname config
-              </h4>
-              
-              {/* Family name input */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  FAMILY NAME / SURNAME
-                </label>
-                <input 
-                  type="text"
-                  value={familyName}
-                  onChange={(e) => setFamilyName(e.target.value)}
-                  placeholder="e.g. Sharma"
-                  style={{
-                    width: '100%',
-                    padding: '14px 16px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border-sand)',
-                    fontSize: '15px',
-                    fontFamily: 'inherit',
-                    color: 'var(--text-masala)',
-                    backgroundColor: 'var(--bg-card)',
-                    fontWeight: 600,
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              {/* Special Occasion chips */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
-                  FESTIVALS / SPECIAL OCCASIONS
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {["Diwali Fasting", "Ramadan / Iftar", "No Preference", "Navratri"].map(status => {
-                    const isSel = occasion === status;
-                    return (
-                      <button 
-                        key={status}
-                        onClick={() => setOccasion(status)}
-                        className={`pill-chip ${isSel ? 'active' : ''}`}
-                        style={{
-                          padding: '8px 14px',
-                          fontSize: '13px',
-                          backgroundColor: isSel 
-                            ? (status === "No Preference" ? "var(--accent-coriander)" : "var(--secondary-turmeric)") 
-                            : "var(--bg-card)",
-                          color: isSel 
-                            ? (status === "No Preference" ? "#FFFFFF" : "var(--text-masala)")
-                            : "var(--text-masala)",
-                          borderColor: isSel
-                            ? (status === "No Preference" ? "var(--accent-coriander)" : "var(--text-masala)")
-                            : "var(--border-sand)"
-                        }}
-                      >
-                        {status}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Buttons navigation footer */}
-        <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '30px' }}>
-          <button 
-            onClick={handlePrev}
-            className="btn-secondary"
-            style={{ flex: 1 }}
-          >
-            Back
-          </button>
-          
-          <button 
-            onClick={handleNext}
-            className="btn-primary"
-            style={{ flex: 2 }}
-          >
-            {step === 4 ? "Shuru Karein !" : "Agla Kadam"}
-            <ArrowRight size={18} />
-          </button>
-        </div>
+        {/* Buttons Row */}
+        {step < 6 && (
+          <div style={styles.btnRow}>
+            {step > 1 && (
+              <button style={styles.secondaryBtn} onClick={handleBack}>
+                Pichhla Kadam
+              </button>
+            )}
+            <button
+              style={{
+                ...styles.primaryBtn,
+                width: step === 1 ? '100%' : 'auto'
+              }}
+              onClick={handleNext}
+            >
+              {step === 5 ? 'Shuru Karein! 🚀' : 'Agla Kadam →'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    height: '100%',
+    background: '#FDF8F2'
+  },
+  progressContainer: {
+    display: 'flex',
+    gap: '6px',
+    marginBottom: '24px'
+  },
+  progressBar: {
+    flex: 1,
+    height: '4px',
+    borderRadius: '2px',
+    transition: 'all 0.3s ease'
+  },
+  card: {
+    padding: '28px',
+    borderRadius: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  stepNum: {
+    fontSize: '11px',
+    fontWeight: '800',
+    color: '#E8692A',
+    letterSpacing: '1px'
+  },
+  title: {
+    fontSize: '28px',
+    margin: '6px 0 10px 0',
+    color: '#1A0E08'
+  },
+  desc: {
+    fontSize: '14px',
+    lineHeight: '1.45',
+    color: '#7A5540',
+    marginBottom: '16px'
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '700',
+    color: '#4A2C1A',
+    marginBottom: '8px'
+  },
+  input: {
+    width: '100%',
+    padding: '14px 18px',
+    borderRadius: '12px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '16px',
+    fontFamily: 'Outfit, sans-serif',
+    outline: 'none',
+    background: '#fff',
+    transition: 'border-color 0.2s ease',
+    marginBottom: '16px'
+  },
+  grid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px'
+  },
+  gridBtn: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '12px',
+    border: '1px solid',
+    fontSize: '15px',
+    fontWeight: '600',
+    textAlign: 'left',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  verticalList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    maxHeight: '320px',
+    overflowY: 'auto',
+    paddingRight: '4px'
+  },
+  listBtn: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '12px',
+    border: '1px solid',
+    fontSize: '15px',
+    fontWeight: '600',
+    textAlign: 'left',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  tagCloud: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px'
+  },
+  tagBtn: {
+    padding: '10px 16px',
+    borderRadius: '20px',
+    border: '1px solid',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  btnRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '12px',
+    marginTop: '12px'
+  },
+  primaryBtn: {
+    background: 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '14px',
+    padding: '14px 24px',
+    fontWeight: '700',
+    fontSize: '15px',
+    cursor: 'pointer',
+    flex: 1
+  },
+  secondaryBtn: {
+    background: '#F9F1E5',
+    color: '#4A2C1A',
+    border: '1px solid rgba(74, 44, 26, 0.1)',
+    borderRadius: '14px',
+    padding: '14px 20px',
+    fontWeight: '600',
+    fontSize: '15px',
+    cursor: 'pointer'
+  },
+  googleSetupBtn: {
+    background: '#FFFFFF',
+    color: '#1A0E08',
+    border: '1.5px solid rgba(74, 44, 26, 0.15)',
+    borderRadius: '24px',
+    padding: '14px 24px',
+    fontSize: '15px',
+    fontFamily: 'Outfit, sans-serif',
+    fontWeight: '700',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+    transition: 'all 0.2s ease'
+  },
+  offlineSetupBtn: {
+    width: '100%',
+    background: 'none',
+    border: 'none',
+    color: '#E8692A',
+    fontWeight: '700',
+    fontSize: '14px',
+    cursor: 'pointer',
+    marginTop: '18px',
+    textDecoration: 'underline'
+  }
+};

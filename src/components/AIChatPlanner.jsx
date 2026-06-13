@@ -1,222 +1,106 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChefHat, Sparkles, Check, ChevronUp, ChevronDown, Trash2, RotateCcw, Search, Info, Plus, FileText, CheckCircle, BookOpen } from 'lucide-react';
-import { getMergedKnowledgeBase, appendCustomRecipe } from '../data/CulinaryKnowledgeBase';
-import { searchMegaIndex, MEGA_LSI_DICTIONARY } from '../data/RecipeIndex';
+import { useApp } from '../context/AppContext';
+import { queryAI } from '../utils/puterAI';
+import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
+import { HEALTH_DRINKS } from '../data/HealthDrinks';
+import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
 
-// --- Helper: Get current week's day labels starting from Monday ---
-const getCurrentWeekDays = () => {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=Sun,1=Mon,...
-  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diffToMon);
-  const names = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-  const result = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const dayName = names[d.getDay()];
-    result.push(`${dayName} ${d.getDate()}`);
-  }
-  return result;
-};
+// High-fidelity structured text formatter for Nani's Hinglish responses
+const renderMessageText = (text) => {
+  if (!text) return null;
+  
+  const lines = text.split('\n');
+  return lines.map((line, idx) => {
+    let cleanLine = line.trim();
+    if (!cleanLine) return <div key={idx} style={{ height: '8px' }} />;
+    
+    // Check if it's a bullet item
+    const isBullet = cleanLine.startsWith('- ') || cleanLine.startsWith('* ') || cleanLine.startsWith('• ');
+    // Check if it's a numbered step
+    const isNumbered = /^\d+[\.\)]\s+/.test(cleanLine);
+    
+    // Parse bold text **text** -> <strong>text</strong>
+    const parseBold = (str) => {
+      const parts = str.split(/\*\*|\*/);
+      return parts.map((part, i) => {
+        if (i % 2 === 1) return <strong key={i} style={{ color: '#C4501A', fontWeight: '800' }}>{part}</strong>;
+        return part;
+      });
+    };
 
-// --- Typo-Resilient Levenshtein Distance Algorithm ---
-function getLevenshteinDistance(s1, s2) {
-  const a = s1.toLowerCase().trim();
-  const b = s2.toLowerCase().trim();
-  if (a === b) return 0;
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
-        );
-      }
+    if (isBullet) {
+      const content = cleanLine.replace(/^[-*•]\s+/, '');
+      return (
+        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '4px 0 4px 12px' }}>
+          <span style={{ color: '#E8692A', fontSize: '14px' }}>•</span>
+          <span style={{ fontSize: '13.5px', lineHeight: '1.45', color: '#4A2C1A' }}>{parseBold(content)}</span>
+        </div>
+      );
     }
-  }
-  return matrix[b.length][a.length];
-}
-
-// --- Multilingual LSI Phonetic & Alias Mapping Dictionary (Mega - All Indian Languages) ---
-// Using MEGA_LSI_DICTIONARY from RecipeIndex.js for comprehensive multilingual support
-const LSI_DICTIONARY = MEGA_LSI_DICTIONARY;
-
-// --- Binary Decision Tree Questions Map ---
-const BINARY_TREE_QUESTIONS = {
-  'DIET': {
-    English: "Is this a Non-Vegetarian meal?",
-    Bengali: "Eti ki aamish (Non-Veg) ranna?",
-    Hindi: "Kya yeh Non-Vegetarian (maasahari) khana hai?",
-    Hinglish: "Kya yeh Non-Veg meal banana hai?",
-    Oriya: "Eha kana Non-Veg (amisha) khana achhi?",
-    options: [
-      { key: 'Yes', English: "Yes, Non-Veg 🍗", Bengali: "Hyan, Aamish 🍗", Hindi: "Haan, Non-Veg 🍗", Hinglish: "Haan, Non-Veg 🍗", Oriya: "Hna, Amisha 🍗" },
-      { key: 'No', English: "No, Veg 🍃", Bengali: "Na, Niramish 🍃", Hindi: "Nahi, Shakahari 🍃", Hinglish: "Nahi, Pure Veg 🍃", Oriya: "Na, Niramisha 🍃" }
-    ]
-  },
-  'DIET_NV_SUB': {
-    English: "Do you want Seafood or Egg?",
-    Bengali: "Aponi ki maach ba dim pochondo korben?",
-    Hindi: "Kya aap machhli ya anda chahte hain?",
-    Hinglish: "Kya aapko fish ya egg khana hai?",
-    Oriya: "Apana kana machha ki dimba pasand karibe?",
-    options: [
-      { key: 'Yes', English: "Yes, Fish/Egg 🐟", Bengali: "Hyan, Maach/Dim 🐟", Hindi: "Haan, Machhli/Anda 🐟", Hinglish: "Haan, Fish/Egg 🐟", Oriya: "Hna, Machha/Dimba 🐟" },
-      { key: 'No', English: "No, Chicken/Mutton 🍗", Bengali: "Na, Chicken/Mutton 🍗", Hindi: "Nahi, Meat 🍗", Hinglish: "Nahi, Chicken/Mutton 🍗", Oriya: "Na, Mutton/Chicken 🍗" }
-    ]
-  },
-  'DIET_V_SUB': {
-    English: "Is this a Jain Special meal (no root vegetables, onion, or garlic)?",
-    Bengali: "Eti ki Jain Special (bina peyaj-rosun aar mul ranna)?",
-    Hindi: "Kya yeh Jain Special khana hai (bina pyaaz, lehsun aur jameen ke neeche ugane wali sabziyo ke)?",
-    Hinglish: "Kya yeh Jain Special meal hai (no onion, garlic, or roots)?",
-    Oriya: "Eha kana Jain Special (bina piaja-rasuna) ahar?",
-    options: [
-      { key: 'Yes', English: "Yes, Jain Special 📿", Bengali: "Hyan, Jain 📿", Hindi: "Haan, Jain Special 📿", Hinglish: "Haan, Jain style 📿", Oriya: "Hna, Jain Ahar 📿" },
-      { key: 'No', English: "No, Regular Veg 🍃", Bengali: "Na, Sadharan Niramish 🍃", Hindi: "Nahi, Normal Veg 🍃", Hinglish: "Nahi, Regular Veg 🍃", Oriya: "Na, Normal Veg 🍃" }
-    ]
-  },
-  'REG_EAST': {
-    English: "Do you want East Indian style cuisine (Bengal or Odisha)?",
-    Bengali: "Aponi ki purba bharatiyo ranna (West Bengal ba Odisha style) pochondo korben?",
-    Hindi: "Kya aap East Indian style khana chahte hain (Bengal ya Odisha ka)?",
-    Hinglish: "Kya aapko East Indian style (Bengal/Odisha) cuisine chahiye?",
-    Oriya: "Apana kana East Indian (Bengal/Odisha) ranna pasand karibe?",
-    options: [
-      { key: 'Yes', English: "Yes, East Coast 🌾", Bengali: "Hyan, Purbi 🌾", Hindi: "Haan, East Indian 🌾", Hinglish: "Haan, East Coast 🌾", Oriya: "Hna, East Coast 🌾" },
-      { key: 'No', English: "No, North/West 🍛", Bengali: "Na, Uttor/Poshchim 🍛", Hindi: "Nahi, North/West 🍛", Hinglish: "Nahi, North/West 🍛", Oriya: "Na, Uttara/Pashchima 🍛" }
-    ]
-  },
-  'REG_EAST_SUB': {
-    English: "Do you prefer West Bengal style?",
-    Bengali: "Aponi ki West Bengal-er (Bangali) swad pochondo korben?",
-    Hindi: "Kya aap West Bengal style pasand karte hain?",
-    Hinglish: "Kya aapko West Bengal style khana banana hai?",
-    Oriya: "Apana kana West Bengal style pasand karibe?",
-    options: [
-      { key: 'Yes', English: "Yes, West Bengal 🌾", Bengali: "Hyan, Bangali 🌾", Hindi: "Haan, West Bengal 🌾", Hinglish: "Haan, West Bengal 🌾", Oriya: "Hna, West Bengal 🌾" },
-      { key: 'No', English: "No, Odisha Style 📿", Bengali: "Na, Odia style 📿", Hindi: "Nahi, Odisha style 📿", Hinglish: "Nahi, Odisha style 📿", Oriya: "Na, Odia style 📿" }
-    ]
-  },
-  'REG_NW_SUB': {
-    English: "Do you want North Indian style (Punjab or Delhi)?",
-    Bengali: "Aponi ki uttar bharatiyo ranna (Punjab ba Delhi style) pochondo korben?",
-    Hindi: "Kya aap North Indian style khana chahte hain (Punjab ya Delhi ka)?",
-    Hinglish: "Kya aapko North Indian style (Punjab/Delhi) cuisine chahiye?",
-    Oriya: "Apana kana North Indian style (Punjab/Delhi) pasand karibe?",
-    options: [
-      { key: 'Yes', English: "Yes, North India 🥛", Bengali: "Hyan, Uttor 🥛", Hindi: "Haan, North India 🥛", Hinglish: "Haan, North India 🥛", Oriya: "Hna, Uttara India 🥛" },
-      { key: 'No', English: "No, Maharashtra 🥥", Bengali: "Na, Maharashtra 🥥", Hindi: "Nahi, Maharashtra 🥥", Hinglish: "Nahi, Maharashtra 🥥", Oriya: "Na, Maharashtra 🥥" }
-    ]
-  },
-  'REG_N_SUB': {
-    English: "Do you want Punjab style?",
-    Bengali: "Aponi ki Punjab style-er ranna pochondo korben?",
-    Hindi: "Kya aap Punjab style pasand karte hain?",
-    Hinglish: "Kya aapko Punjab style khana chahiye?",
-    Oriya: "Apana kana Punjab style pasand karibe?",
-    options: [
-      { key: 'Yes', English: "Yes, Punjab 🥛", Bengali: "Hyan, Punjab 🥛", Hindi: "Haan, Punjab style 🥛", Hinglish: "Haan, Punjab style 🥛", Oriya: "Hna, Punjab style 🥛" },
-      { key: 'No', English: "No, Delhi Style 🍛", Bengali: "Na, Delhi style 🍛", Hindi: "Nahi, Delhi style 🍛", Hinglish: "Nahi, Delhi style 🍛", Oriya: "Na, Delhi style 🍛" }
-    ]
-  },
-  'MOOD': {
-    English: "Do you want a spicy, rich feast?",
-    Bengali: "Eti ki jhal aar moshladar boro ranna hobe?",
-    Hindi: "Kya aap masaledar aur rich khana chahte hain?",
-    Hinglish: "Kya aapko spicy feast chahiye?",
-    Oriya: "Apana kana spicy o rich khana pasand karibe?",
-    options: [
-      { key: 'Yes', English: "Yes, Spicy 🌶️", Bengali: "Hyan, Moshladar 🌶️", Hindi: "Haan, Masaledar 🌶️", Hinglish: "Haan, Spicy 🌶️", Oriya: "Hna, Spicy 🌶️" },
-      { key: 'No', English: "No, Light 🥣", Bengali: "Na, Halka 🥣", Hindi: "Nahi, Comfort/Halka 🥣", Hinglish: "Nahi, Light/Comfort 🥣", Oriya: "Na, Halka/Comfort 🥣" }
-    ]
-  },
-  'COURSE': {
-    English: "Is this for a main meal (Lunch/Dinner)?",
-    Bengali: "Eti ki mukhho ahar (Lunch/Dinner) er jonne?",
-    Hindi: "Kya yeh main course meal (Lunch ya Dinner) ke liye hai?",
-    Hinglish: "Kya yeh main course (Lunch/Dinner) ke liye hai?",
-    Oriya: "Eha kana mukhya ahar (Lunch/Dinner) pain achhi?",
-    options: [
-      { key: 'Yes', English: "Yes, Lunch/Dinner 🍽️", Bengali: "Hyan, Main Ahar 🍽️", Hindi: "Haan, Lunch/Dinner 🍽️", Hinglish: "Haan, Lunch/Dinner 🍽️", Oriya: "Hna, Lunch/Dinner 🍽️" },
-      { key: 'No', English: "No, Breakfast/Snack ☕", Bengali: "Na, Jolkhabar ☕", Hindi: "Nahi, Nashta ☕", Hinglish: "Nahi, Breakfast/Snack ☕", Oriya: "Na, Jolkhaba ☕" }
-    ]
-  }
+    
+    if (isNumbered) {
+      const numMatch = cleanLine.match(/^(\d+[\.\)])\s+/);
+      const numPrefix = numMatch ? numMatch[1] : '';
+      const content = cleanLine.replace(/^\d+[\.\)]\s+/, '');
+      return (
+        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '4px 0 4px 12px' }}>
+          <span style={{ color: '#E8692A', fontWeight: '700', fontSize: '13px' }}>{numPrefix}</span>
+          <span style={{ fontSize: '13.5px', lineHeight: '1.45', color: '#4A2C1A' }}>{parseBold(content)}</span>
+        </div>
+      );
+    }
+    
+    // Check if it looks like a section header/title
+    const isTitle = cleanLine.length < 50 && (cleanLine.endsWith(':') || !cleanLine.includes('.'));
+    if (isTitle) {
+      return (
+        <h4 key={idx} className="text-serif" style={{ fontSize: '15px', color: '#1A0E08', marginTop: '12px', marginBottom: '6px', fontWeight: '800' }}>
+          {parseBold(cleanLine)}
+        </h4>
+      );
+    }
+    
+    return (
+      <p key={idx} style={{ fontSize: '13.5px', lineHeight: '1.45', margin: '6px 0', color: '#4A2C1A' }}>
+        {parseBold(cleanLine)}
+      </p>
+    );
+  });
 };
 
-export default function AIChatPlanner({
-  messages,
-  onSendMessage,
-  onClearChat,
-  profile,
-  members,
-  inventory,
-  isTyping,
+export default function AIChatPlanner() {
+  const { state, dispatch } = useApp();
+  const { profile, chatHistory, inventory } = state;
   
-  // Guided Interview States
-  isInterviewActive,
-  setIsInterviewActive,
-  interviewStep,
-  setInterviewStep,
-  interviewAnswers,
-  setInterviewAnswers
-}) {
-  const [inputText, setInputText] = useState('');
-  const [expandedRecipe, setExpandedRecipe] = useState(null);
-  
-  // Dedicated direct-match recipe (to avoid category mismatch when searching by name)
-  const [directMatchRecipes, setDirectMatchRecipes] = useState(null);
-  
-  // Interactive Binary Decision Tree State
-  const [treeState, setTreeState] = useState({
-    step: 'DIET', // DIET, DIET_NV_SUB, DIET_V_SUB, REG_EAST, REG_EAST_SUB, REG_NW_SUB, REG_N_SUB, MOOD, COURSE, RESULTS
-    choices: {}
-  });
-
-  // Uploader and Custom Appender State
-  const [showUploader, setShowUploader] = useState(false);
-  const [rawText, setRawText] = useState('');
-  const [parsedPreview, setParsedPreview] = useState(null);
-  const [uploadState, setUploadState] = useState('West Bengal');
-  const [uploadDiet, setUploadDiet] = useState('Vegetarian');
-  const [uploadMood, setUploadMood] = useState('Light Comfort 🥣');
-  const [uploadCourse, setUploadCourse] = useState('Lunch/Dinner 🍽️');
-  const [uploadStatusMsg, setUploadStatusMsg] = useState('');
-
-  // Track loaded recipes to show success feedback inline
-  const [loadedRecipeId, setLoadedRecipeId] = useState(null);
-  const [loadingDaySelectorId, setLoadingDaySelectorId] = useState(null);
-
-  // Active Multilingual selector state
-  const [activeLang, setActiveLang] = useState(() => {
-    const palate = profile.regionalPalate || 'West Bengal';
-    if (palate === 'West Bengal') return 'Bengali';
-    if (palate === 'Odisha') return 'Oriya';
-    return 'Hinglish';
-  });
-
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  
+  // State for the interactive Planner injection drawer
+  const [selectedMsgIndex, setSelectedMsgIndex] = useState(null);
+  const [selectedDay, setSelectedDay] = useState('MON');
+  const [selectedMeal, setSelectedMeal] = useState('lunch');
+  const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
-    // Bypassing Puter auth login screen for frictionless zero-cost startup pitch
-    setShowLoginPrompt(false);
+    // Check if Puter auth is active
+    if (window.puter && window.puter.auth) {
+      try {
+        if (window.puter.auth.isSignedIn()) {
+          setShowLoginPrompt(false);
+        } else {
+          setShowLoginPrompt(true);
+        }
+      } catch (err) {
+        console.warn("Puter auth check failed, bypassing to ensure smooth experience", err);
+        setShowLoginPrompt(false);
+      }
+    } else {
+      setShowLoginPrompt(false);
+    }
   }, []);
 
   const handlePuterLogin = () => {
@@ -236,1092 +120,800 @@ export default function AIChatPlanner({
     }
   };
 
-  // Auto-scroll chat to bottom
-  useEffect(() => {
+  // Auto-scroll to bottom of chat
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping, treeState.step]);
-
-  const handleResetTree = () => {
-    setTreeState({
-      step: 'DIET',
-      choices: {}
-    });
-    setExpandedRecipe(null);
-    setLoadingDaySelectorId(null);
-    setRawText('');
-    setParsedPreview(null);
-    setShowUploader(false);
-    setDirectMatchRecipes(null); // Clear direct match on reset
   };
 
-  const getFiltersFromChoices = (choices) => {
-    let diet = 'Vegetarian';
-    if (choices['DIET'] === 'Yes') {
-      diet = 'Non-Vegetarian';
-    } else if (choices['DIET_V_SUB'] === 'Yes') {
-      diet = 'Jain Special';
-    }
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory, isLoading]);
 
-    let state = 'West Bengal';
-    if (choices['REG_EAST'] === 'Yes') {
-      if (choices['REG_EAST_SUB'] === 'Yes') {
-        state = 'West Bengal';
-      } else {
-        state = 'Odisha';
-      }
-    } else {
-      if (choices['REG_NW_SUB'] === 'Yes') {
-        if (choices['REG_N_SUB'] === 'Yes') {
-          state = 'Punjab';
-        } else {
-          state = 'Delhi';
-        }
-      } else {
-        state = 'Maharashtra';
-      }
-    }
-
-    const mood = (choices['MOOD'] === 'Yes') ? 'Spicy Feast 🌶️' : 'Light Comfort 🥣';
-    const course = (choices['COURSE'] === 'Yes') ? 'Lunch/Dinner 🍽️' : 'Breakfast/Snacks ☕';
-
-    return { state, diet, mood, course };
-  };
-
-  // Traverses the binary decision tree logic
-  const handleBinaryChoice = (choiceKey, displayLabel) => {
-    // Clear any direct search match so tree navigation shows category results correctly
-    setDirectMatchRecipes(null);
-    const currentStep = treeState.step;
-    let nextStep = '';
-    const updatedChoices = { ...treeState.choices, [currentStep]: choiceKey };
-
-    if (currentStep === 'DIET') {
-      nextStep = choiceKey === 'Yes' ? 'DIET_NV_SUB' : 'DIET_V_SUB';
-    } else if (currentStep === 'DIET_NV_SUB' || currentStep === 'DIET_V_SUB') {
-      nextStep = 'REG_EAST';
-    } else if (currentStep === 'REG_EAST') {
-      nextStep = choiceKey === 'Yes' ? 'REG_EAST_SUB' : 'REG_NW_SUB';
-    } else if (currentStep === 'REG_EAST_SUB') {
-      nextStep = 'MOOD';
-    } else if (currentStep === 'REG_NW_SUB') {
-      nextStep = choiceKey === 'Yes' ? 'REG_N_SUB' : 'MOOD';
-    } else if (currentStep === 'REG_N_SUB') {
-      nextStep = 'MOOD';
-    } else if (currentStep === 'MOOD') {
-      nextStep = 'COURSE';
-    } else if (currentStep === 'COURSE') {
-      nextStep = 'RESULTS';
-    }
-
-    setTreeState({
-      step: nextStep,
-      choices: updatedChoices
-    });
-
-    // Append user bubble locally
-    onSendMessage(displayLabel, null, true);
-
-    if (nextStep === 'RESULTS') {
-      setTimeout(() => {
-        const filters = getFiltersFromChoices(updatedChoices);
-        const recipes = getMatchingRecipes(filters);
-        let confirmedText = '';
+  // Automated trigger effect that ensures ALL user prompts (manual or programmatic) get answered immediately
+  useEffect(() => {
+    if (chatHistory.length > 0 && !isLoading) {
+      const lastMsg = chatHistory[chatHistory.length - 1];
+      if (lastMsg.sender === 'user') {
+        const lastProcessedKey = 'homechef_last_processed_msg_timestamp';
+        const lastProcessed = localStorage.getItem(lastProcessedKey);
         
-        if (recipes.length > 0) {
-          const first = recipes[0];
-          confirmedText = first.chatResponse[activeLang] || first.chatResponse['English'] || `Curated special recipes for you!`;
-        } else {
-          confirmedText = `Based on your selected choices, I have found perfect matching recipes. Check out the culinary cards below to cook or load them directly into your Hafta plan!`;
+        if (lastMsg.timestamp.toString() !== lastProcessed) {
+          localStorage.setItem(lastProcessedKey, lastMsg.timestamp.toString());
+          triggerAIQuery(lastMsg.text);
         }
-        
-        onSendMessage(confirmedText, null, false, 'AI');
-      }, 500);
-    }
-  };
-
-  // Helper to fetch matching recipes from merged knowledge base
-  const getMatchingRecipes = (filters) => {
-    try {
-      const mergedDb = getMergedKnowledgeBase();
-      const s = filters.state;
-      const d = filters.diet;
-      const m = filters.mood;
-      const c = filters.course;
-      
-      return mergedDb[s]?.[d]?.[m]?.[c] || [];
-    } catch (e) {
-      console.error("Error retrieving recipes from merged knowledge base", e);
-      return [];
-    }
-  };
-
-  // Raw custom recipe uploader parser
-  const handleRawTextChange = (text) => {
-    setRawText(text);
-    if (!text.trim()) {
-      setParsedPreview(null);
-      return;
-    }
-    
-    let title = 'Custom Recipe';
-    const titleMatch = text.match(/(?:title|name|recipe)\s*:\s*(.+)/i);
-    if (titleMatch) {
-      title = titleMatch[1].trim();
-    } else {
-      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      if (lines.length > 0) {
-        title = lines[0].replace(/^(title|name|recipe)\s*:\s*/i, '').trim();
       }
     }
-    
-    let time = '25 MINS';
-    const timeMatch = text.match(/(?:time|cook time|duration)\s*:\s*(.+)/i) || text.match(/(\d+\s*(?:min|mins|minute|minutes|hour|hours))/i);
-    if (timeMatch) {
-      time = timeMatch[1].toUpperCase().trim();
-    }
+  }, [chatHistory, isLoading]);
 
-    let ingredients = [];
-    const ingSectionMatch = text.match(/(?:ingredients|pantry|items|samaan)\s*:?\s*\n([\s\S]*?)(?:\n\s*\n|\n\s*(?:steps|instructions|direction|prep|cook|method|$))/i);
-    if (ingSectionMatch) {
-      ingredients = ingSectionMatch[1].split('\n')
-        .map(l => l.replace(/^[-*•\d.\s]+/, '').trim())
-        .filter(l => l.length > 0);
-    } else {
-      ingredients = text.split('\n')
-        .filter(l => l.trim().startsWith('-') || l.trim().startsWith('*'))
-        .map(l => l.replace(/^[-*\s]+/, '').trim())
-        .filter(l => l.length > 0);
-    }
-    if (ingredients.length === 0) {
-      ingredients = ["Custom Ingredients Needed"];
-    }
+  // Dedicated query function to synthesize Nani's response without message duplication
+  const triggerAIQuery = async (userText) => {
+    setIsLoading(true);
 
-    let steps = [];
-    const stepsSectionMatch = text.match(/(?:steps|instructions|prep|cooking steps|method|directions)\s*:?\s*\n([\s\S]*)/i);
-    if (stepsSectionMatch) {
-      steps = stepsSectionMatch[1].split('\n')
-        .map(l => l.replace(/^[-*•\d.\s]+/, '').trim())
-        .filter(l => l.length > 0);
-    } else {
-      steps = text.split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 15 && !l.startsWith('-') && !l.startsWith('*'))
-        .filter(l => !l.toLowerCase().includes('ingredients:'));
-    }
-    if (steps.length === 0) {
-      steps = ["1. Cook properly and serve hot."];
-    }
+    const activePantryStock = inventory
+      .filter(item => item.status === 'Fresh' || item.status === 'Expiring Soon')
+      .map(item => `${item.name} (${item.quantity})`)
+      .join(', ');
 
-    setParsedPreview({
-      title,
-      time,
-      complexity: 'MEDIUM',
-      tag: 'CUSTOM RECIPE',
-      ingredients,
-      steps,
-      chatResponse: {
-        "English": `Here is your customized ${title}! Cooked to perfection just the way you like.`,
-        "Bengali": `Aponar jonne swadisht ${title} ready! Gorom gorom khele khub bhalo lagbe.`,
-        "Hindi": `Aapka apna custom ${title} taiyar hai! Apne swad ke anusar ise garam parosein.`,
-        "Hinglish": `Aapka customized ${title} ready hai! Ise recipe steps ke according fully cook karein.`,
-        "Oriya": `Tasty ${title} ready karichi! Garam garam khub bhala lagiba.`
-      }
-    });
-  };
+    // 🧠 20+ Years Experience System Architect Unified Prompt Coordinator
+    let localContextInjected = "";
+    const queryLower = userText.toLowerCase();
 
-  const handleConfirmUpload = () => {
-    if (!parsedPreview) return;
-    const success = appendCustomRecipe(uploadState, uploadDiet, uploadMood, uploadCourse, parsedPreview);
-    if (success) {
-      setUploadStatusMsg("✓ Appended to offline database successfully!");
-      setTimeout(() => {
-        setUploadStatusMsg('');
-        setShowUploader(false);
-        setRawText('');
-        setParsedPreview(null);
-        // Force jump tree to results of this added custom recipe
-        setTreeState({
-          step: 'RESULTS',
-          choices: {
-            'DIET': uploadDiet === 'Non-Vegetarian' ? 'Yes' : 'No',
-            'DIET_V_SUB': uploadDiet === 'Jain Special' ? 'Yes' : 'No',
-            'REG_EAST': (uploadState === 'West Bengal' || uploadState === 'Odisha') ? 'Yes' : 'No',
-            'REG_EAST_SUB': uploadState === 'West Bengal' ? 'Yes' : 'No',
-            'REG_NW_SUB': (uploadState === 'Punjab' || uploadState === 'Delhi') ? 'Yes' : 'No',
-            'REG_N_SUB': uploadState === 'Punjab' ? 'Yes' : 'No',
-            'MOOD': uploadMood.includes('Spicy') ? 'Yes' : 'No',
-            'COURSE': uploadCourse.includes('Lunch') ? 'Yes' : 'No'
-          }
-        });
-        onSendMessage(`Append custom recipe: "${parsedPreview.title}"`, null, true);
-        setTimeout(() => {
-          onSendMessage(`Adbhut! Appended your custom recipe "${parsedPreview.title}" successfully into our offline database! Check out your newly active card below:`, null, false, 'AI');
-        }, 300);
-      }, 1500);
-    }
-  };
+    // 1. Scan Grandmother Heirloom Recipes
+    const matchGrandmother = GRANDMOTHER_RECIPES.filter(r => 
+      queryLower.includes(r.name.toLowerCase()) ||
+      (r.region && queryLower.includes(r.region.toLowerCase())) ||
+      r.ingredients.some(ing => queryLower.includes(ing.split(' ')[0].toLowerCase()))
+    );
 
-  // --- Typo-Resilient & Phonetic Broken Language Search Resolver ---
-  // KEY FIX: Calls onSendMessage(text, null, FALSE) to trigger real API waterfall in App.jsx
-  // Offline search only sets recipe CARDS (directMatchRecipes), not the chat text
-  const handleSearchSubmit = () => {
-    const rawQuery = inputText.trim().toLowerCase();
-    if (!rawQuery) return;
+    // 2. Scan Nani's Health Drinks
+    const matchHealth = HEALTH_DRINKS.filter(hd => 
+      queryLower.includes(hd.name.toLowerCase()) ||
+      queryLower.includes(hd.category.toLowerCase().split(' ')[0]) ||
+      hd.ingredients.some(ing => queryLower.includes(ing.split(' ')[0].toLowerCase()))
+    );
 
-    const originalInput = inputText;
-    setInputText('');
-
-    if (isInterviewActive) {
-      onSendMessage(originalInput, null, false);
-      return;
-    }
-
-    // STOPWORDS: common Bengali/Hindi non-food conversational words to ignore
-    const stopwords = new Set([
-      'ranna','sekhao','banao','banana','batao','bolo','karo','debo','dite',
-      'recipe','recipie','recepie','details','dikhao','sikhao','chahiye',
-      'please','ok','okay','aaj','kal','aage','kya','hai','hain','de',
-      'ki','kemon','kemiti','kaise','how','make','cook','prepare',
-      'the','a','an','is','are','in','on','at','by','for','with','to',
-      'and','or','not','liking','like','want','tell','me','give','show'
-    ]);
-
-    // Filter tokens: remove stopwords, short words
-    const queryTokens = rawQuery.split(/[\s,._-]+/)
-      .filter(t => t.length > 1 && !stopwords.has(t));
-
-    // Clear old direct match immediately (prevents stale card showing)
-    setDirectMatchRecipes(null);
-
-    // Step 1: Trigger FULL API call through App.jsx (adds user bubble + runs Gemini→Groq→OpenRouter)
-    // This is the live AI call - the chat response text comes from here
-    onSendMessage(originalInput, null, false);
-
-    // Step 2: Run offline search in parallel for RECIPE CARDS ONLY (not chat text)
-    if (queryTokens.length === 0) return;
-
-    // getMergedKnowledgeBase is already imported at the top of this file
-    const mergedDb = getMergedKnowledgeBase();
-    let scoredRecipes = [];
-
-    Object.entries(mergedDb).forEach(([stateName, diets]) => {
-      Object.entries(diets).forEach(([dietName, moods]) => {
-        Object.entries(moods).forEach(([moodName, courses]) => {
-          Object.entries(courses).forEach(([courseName, recipeList]) => {
-            recipeList.forEach(recipe => {
-              // Check Jain/Vegan restrictions
-              if (profile.dietaryPreference === 'Jain') {
-                const jainForbidden = ['aloo', 'potato', 'onion', 'pyaaz', 'garlic', 'lehsun', 'ginger', 'adrak', 'eggplant', 'begun', 'baingan'];
-                const titleLower = recipe.title.toLowerCase();
-                const hasForbidden = recipe.ingredients?.some(ing => 
-                  jainForbidden.some(forbidden => ing.toLowerCase().includes(forbidden))
-                ) || jainForbidden.some(forbidden => titleLower.includes(forbidden));
-                if (hasForbidden) return;
-              }
-              if (profile.dietaryPreference === 'Vegan') {
-                const veganForbidden = ['paneer', 'cheese', 'butter', 'ghee', 'cream', 'curd', 'milk', 'yogurt', 'dahi', 'honey', 'egg', 'chicken', 'mutton', 'fish', 'beef', 'meat'];
-                const titleLower = recipe.title.toLowerCase();
-                const hasForbidden = recipe.ingredients?.some(ing => 
-                  veganForbidden.some(forbidden => ing.toLowerCase().includes(forbidden))
-                ) || veganForbidden.some(forbidden => titleLower.includes(forbidden));
-                if (hasForbidden) return;
-              }
-
-              let score = 0;
-              const titleWords = recipe.title.toLowerCase().split(/[\s,._-]+/).filter(w => w.length > 0);
-
-              queryTokens.forEach(token => {
-                if (recipe.title.toLowerCase().includes(token)) score += 15;
-                if (recipe.tag && recipe.tag.toLowerCase().includes(token)) score += 10;
-                
-                (recipe.ingredients || []).forEach(ing => {
-                  if (ing.toLowerCase().includes(token)) score += 5;
-                });
-
-                titleWords.forEach(tWord => {
-                  const dist = getLevenshteinDistance(token, tWord);
-                  if (dist === 0) score += 15;
-                  else if (dist === 1 && token.length >= 5) score += 10; // Strict: prevents loti→roti
-                  else if (dist === 2 && token.length >= 6) score += 6;
-                });
-
-                Object.entries(LSI_DICTIONARY).forEach(([key, synonyms]) => {
-                  const distToKey = getLevenshteinDistance(token, key);
-                  if (distToKey === 0 || (distToKey === 1 && token.length >= 5)) {
-                    synonyms.forEach(syn => {
-                      if (recipe.title.toLowerCase().includes(syn)) score += 8;
-                      (recipe.ingredients || []).forEach(ing => {
-                        if (ing.toLowerCase().includes(syn)) score += 4;
-                      });
-                    });
-                  }
-                });
-              });
-
-              if (score >= 10) {
-                scoredRecipes.push({ recipe, score });
-              }
-            });
-          });
-        });
+    if (matchGrandmother.length > 0) {
+      localContextInjected += `\n[INTERNAL SECURED DATABASE MATCHES - HEIRLOOM RECIPES]\n`;
+      matchGrandmother.slice(0, 2).forEach(r => {
+        localContextInjected += `Dish: ${r.name}\nRegion: ${r.region}\nStory/Backstory: ${r.story}\nIngredients needed: ${r.ingredients.join(', ')}\nSteps to cook:\n${r.steps.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n`;
       });
-    });
+      localContextInjected += `CRITICAL INSTRUCTION: You MUST use these exact ingredients and steps as the basis for your recipe response. Sauté and Kosha times must match exactly. Do not hallucinate different versions.\n`;
+    }
 
-    scoredRecipes.sort((a, b) => b.score - a.score);
+    if (matchHealth.length > 0) {
+      localContextInjected += `\n[INTERNAL SECURED DATABASE MATCHES - NANI'S HEALTH DRINKS]\n`;
+      matchHealth.slice(0, 2).forEach(hd => {
+        localContextInjected += `Drink: ${hd.name}\nBenefits: ${hd.objective}\nEquipment needed: ${hd.equipment}\nNani's Wisdom/Story: ${hd.story}\nIngredients needed: ${hd.ingredients.join(', ')}\nSteps to prepare:\n${hd.recipe.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n`;
+      });
+      localContextInjected += `CRITICAL INSTRUCTION: You MUST present this exact health drink formulation from Nani's Nuskhe database using the exact home ingredients. Highlight that it is prepared 100% in a ${matchHealth[0].equipment}.\n`;
+    }
 
-    if (scoredRecipes.length > 0) {
-      // Set ONLY the exact matched recipe card (fixes mismatch bug)
-      setDirectMatchRecipes([scoredRecipes[0].recipe]);
-      setTreeState({ step: 'RESULTS', choices: {} });
-    } else {
-      // TIER 2: Search Mega Recipe Index for a title hint card
-      const megaResults = searchMegaIndex(rawQuery);
-      if (megaResults.length > 0) {
-        // Show mega index result as a minimal card
-        const top = megaResults[0];
-        const minimalCard = {
-          title: top.title,
-          time: top.time || '30 MINS',
-          tag: top.state ? `${top.state.toUpperCase()} SPECIAL` : 'REGIONAL DISH',
-          ingredients: top.ingredients || ['See full recipe below'],
-          steps: ['Full step-by-step recipe is being fetched via AI. Use the binary tree choices below for an instant offline version!'],
-          chatResponse: { English: `I found "${top.title}" — recipe card loaded.` }
-        };
-        setDirectMatchRecipes([minimalCard]);
-        setTreeState({ step: 'RESULTS', choices: {} });
-      }
-      // If nothing found at all, leave directMatchRecipes null (no card — API chat handles it)
+    const systemInstruction = `You are a warm, traditional, caring Indian grandmother (Nani) named 'HomeChef AI Rasoi Saathi'. 
+    Aap family ki daily kitchen decisions aur cooking me madad karte hain. 
+    Speak in a warm, culturally authentic Hinglish style (Hindi words written in English alphabet, mixed with conversational English).
+    Aapka tone bilkul dadi-nani jaisa hona chahiye - caring, encouraging, and full of kitchen wisdom.
+    Use terms like 'Beta', 'Koi Baat Nahi!', 'Shubh Bhojan!'.
+    Current Family Profile: Regional Palate is ${profile.regionalPalate} Style, Diet Preference is ${profile.dietType}.
+    Active Pantry Stock: ${activePantryStock || 'No active pantry items recorded.'}
+    Important Lock: If profile is Gujarati or Vegetarian, strictly suggest only 100% vegetarian recipes. Never mention non-veg ingredients.
+    ${localContextInjected}
+    
+    STRICT FORMAT ENFORCEMENTS:
+    - Keep your advice clean and beautifully structured.
+    - Write in short paragraphs. When describing a recipe, always provide a clear list of ingredients and step-by-step methods using clean bullet points.
+    - Never write long monolithic text clumps. Keep it extremely readable and structured for mobile displays.
+    - Do NOT output any raw markdown asterisks (*) or formatting symbols in plain text. Every bullet must render nicely.`;
+
+    // Format the last 8 messages for context in the LLM query to maintain flawless conversation flow
+    const recentHistory = chatHistory
+      .slice(-8)
+      .map(msg => `${msg.sender === 'user' ? 'Beta' : 'Nani'}: ${msg.text}`)
+      .join('\n\n');
+
+    const promptWithHistory = recentHistory
+      ? `Recent Conversation Context:\n${recentHistory}\n\nLatest message to reply to:\nBeta: ${userText}`
+      : userText;
+
+    try {
+      const response = await queryAI(promptWithHistory, systemInstruction, 'gpt-4o-mini');
+      const naniMsg = { sender: 'nani', text: response, timestamp: Date.now() };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: naniMsg });
+    } catch (e) {
+      console.error(e);
+      const naniErrorMsg = { 
+        sender: 'nani', 
+        text: 'Beta, hamara connection thoda dheema hai par fikar mat karo! Ek cup garam adrak wali chai piyo aur tab tak hamara offline cookbook browse karo. Kuch swadisht thali plans ready hain!', 
+        timestamp: Date.now() 
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: naniErrorMsg });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-
-  // Loads recommended recipe into weekly calendar
-  const handleLoadToPlan = (recipe, day) => {
-    let mealType = 'Lunch';
-    const filters = getFiltersFromChoices(treeState.choices);
-    
-    if (filters.course && filters.course.includes('Breakfast')) {
-      mealType = 'Breakfast';
-    } else if (recipe.title.toLowerCase().includes('chop') || recipe.title.toLowerCase().includes('muri') || recipe.title.toLowerCase().includes('chaat') || recipe.title.toLowerCase().includes('samosa')) {
-      mealType = 'Snack';
+  const handleDownloadChat = () => {
+    if (chatHistory.length === 0) {
+      alert("Aapka chat khali hai beta! Kuch poochiye pehle.");
+      return;
     }
 
-    const parsedRes = {
-      chatText: `Loaded ${recipe.title} into your weekly plan under ${day} ${mealType}!`,
-      hasRecipe: true,
-      recipeTitle: recipe.title,
-      recipeTime: recipe.time,
-      recipeTag: recipe.tag,
-      recipeIngredients: recipe.ingredients,
-      recipeSteps: recipe.steps,
-      meals: [
-        {
-          dayOfWeek: day,
-          mealType: mealType,
-          title: recipe.title,
-          description: recipe.steps[0] || 'Delicious home cooked meal',
-          cookTime: recipe.time,
-          complexity: recipe.complexity,
-          ingredientStatus: 'All at home',
-          tag: recipe.tag
-        }
-      ]
+    let fileContent = `🏡 HomeChef AI - Kitchen Planner & Recipe Document 🏡\n`;
+    fileContent += `=======================================================\n\n`;
+
+    chatHistory.forEach(msg => {
+      const senderName = msg.sender === 'user' ? 'Beta' : 'Nani (AI)';
+      fileContent += `[${senderName}]:\n${msg.text}\n\n`;
+    });
+
+    fileContent += `=======================================================\n`;
+    fileContent += `Generated securely by HomeChef AI - ${new Date().toLocaleDateString()}\n`;
+
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `HomeChef_Recipe_Document_${new Date().getDate()}_${new Date().getMonth() + 1}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Handle message send
+  const handleSend = async (textToSend) => {
+    const text = textToSend || input;
+    if (!text.trim()) return;
+
+    setInput('');
+    
+    const userMsg = { sender: 'user', text: text, timestamp: Date.now() };
+    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+  };
+
+  // Web speech recognition Hinglish input
+  const handleVoiceListen = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice Input is not supported on this browser version. Please try Chrome!');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = 'hi-IN';
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
     };
 
-    onSendMessage(`Load ${recipe.title} into ${day} ${mealType}`, parsedRes, false);
-    setLoadingDaySelectorId(null);
-    setLoadedRecipeId(recipe.title);
-    setTimeout(() => setLoadedRecipeId(null), 3000);
+    recognition.onresult = (event) => {
+      const speechToText = event.results[0][0].transcript;
+      setInput(speechToText);
+    };
+
+    recognition.onerror = (e) => {
+      console.error('Speech Recognition Error:', e);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
-  // Active recipes: prioritize direct search match over tree-category lookup (fixes mismatch bug)
-  const activeRecipes = treeState.step === 'RESULTS' 
-    ? (directMatchRecipes !== null ? directMatchRecipes : getMatchingRecipes(getFiltersFromChoices(treeState.choices)))
-    : [];
+  // Direct injection to Weekly Planner state
+  const handleLoadToPlanner = (msgText, index) => {
+    let dishName = "Nani's AI Recipe";
+    
+    const firstLines = msgText.split('\n')[0].trim();
+    if (firstLines.length > 5 && firstLines.length < 50) {
+      dishName = firstLines.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+    }
+
+    const recipeSteps = msgText.split('\n').filter(line => line.trim().length > 0);
+
+    dispatch({
+      type: 'SWAP_MEAL',
+      payload: {
+        day: selectedDay,
+        mealType: selectedMeal,
+        newMeal: {
+          id: `ai_custom_${index}`,
+          name: dishName,
+          isVegetarian: profile.dietType.toLowerCase().includes('veg') || profile.regionalPalate === 'gujarat',
+          category: selectedMeal,
+          region: profile.regionalPalate || 'Indian',
+          ingredients: ['Ingredients suggested in Nani\'s chat'],
+          steps: recipeSteps
+        }
+      }
+    });
+
+    if (window.navigator.vibrate) {
+      window.navigator.vibrate([80, 50, 80]);
+    }
+
+    setToastMessage(`🎉 Saved to ${selectedDay} ${selectedMeal.toUpperCase()} thali!`);
+    setSelectedMsgIndex(null);
+    setTimeout(() => {
+      setToastMessage('');
+    }, 3000);
+  };
+
+  // Check if a Nani response looks like a recipe suggestion
+  const containsRecipeIndicators = (text) => {
+    if (!text) return false;
+    const lower = text.toLowerCase();
+    return lower.includes('recipe') || 
+           lower.includes('ingred') || 
+           lower.includes('tarika') || 
+           lower.includes('banane') || 
+           lower.includes('masala') || 
+           lower.includes('banao') || 
+           lower.includes('karo');
+  };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: 'calc(100vh - 160px)',
-      position: 'relative'
-    }}>
+    <div style={styles.chatContainer} className="animate-fade-in">
+      {/* Toast Notifications */}
+      {toastMessage && (
+        <div style={styles.toast} className="animate-pop">
+          {toastMessage}
+        </div>
+      )}
+
       {showLoginPrompt ? (
-        <div className="puter-login-gate" style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '90%' }}>
-          <ChefHat size={48} style={{ color: 'var(--primary-saffron)', marginBottom: '16px' }} />
-          <h3 style={{ fontSize: '18px', fontWeight: 900, marginBottom: '8px', fontFamily: 'Outfit', color: 'var(--text-masala)' }}>
+        <div className="puter-login-gate" style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '90%', padding: '40px 24px', textAlign: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>🔐</span>
+          <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#1A0E08', fontFamily: 'Outfit, sans-serif', margin: 0 }}>
             Sign in to start chatting with Homechef AI
           </h3>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', padding: '0 10px' }}>
-            Join Chakraborty Family's smart digital kitchen to cook zero-waste, track ingredients, and customize meal plans!
+          <p style={{ fontSize: '13.5px', color: '#7A5540', margin: '4px 0 16px', lineHeight: '1.5' }}>
+            Connect with Google to unlock hyper-personalized meal plans, custom ingredients tracking, and Nani's AI advice!
           </p>
-          
           <button onClick={handlePuterLogin} className="google-login-btn">
-            🔐 Sign in with Google
+            🔐 Sign in with Google Account
           </button>
-          
-          <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-sand)', paddingTop: '16px', width: '100%' }}>
-            <p className="subtext" style={{ fontSize: '10px', color: 'var(--text-light)', lineHeight: '14px', margin: 0, fontWeight: 700 }}>
-              🔒 Secure Sign-in · Free Account · Powered by Secure Cloud AI
+          <div style={{ marginTop: '16px', borderTop: '1px solid rgba(74, 44, 26, 0.1)', paddingTop: '16px', width: '100%' }}>
+            <p className="subtext" style={{ fontSize: '11px', color: '#E8692A', fontWeight: '700', margin: 0 }}>
+              Free Account · No credit card required · Secure Google Sign-in
             </p>
-            <p className="legal-note" style={{ fontSize: '9px', color: 'var(--text-light)', marginTop: '8px', lineHeight: '12px' }}>
-              By signing in, you agree to our Google Play-compliant terms. Your data remains fully secure and encrypted.
+            <p style={{ fontSize: '9.5px', color: '#7A5540', marginTop: '6px', lineHeight: '13px' }}>
+              HomeChef AI is fully compliant with Google Play Store guidelines. Your preferences remain secure, private, and local.
             </p>
           </div>
         </div>
       ) : (
         <>
-          {/* Flags, Reset & Document Uploader Bar */}
-      <div className="no-print" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingBottom: '10px',
-        borderBottom: '1px solid var(--border-sand)',
-        gap: '8px',
-        flexWrap: 'wrap'
-      }}>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button 
-            onClick={handleResetTree}
-            className="btn-secondary"
-            style={{
-              padding: '6px 12px',
-              fontSize: '11px',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              borderColor: 'var(--border-sand)'
-            }}
-          >
-            <RotateCcw size={12} />
-            Reset Tree
-          </button>
-
-          <button 
-            onClick={() => setShowUploader(!showUploader)}
-            className="btn-primary"
-            style={{
-              padding: '6px 12px',
-              fontSize: '11px',
-              fontWeight: 800,
-              width: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <Plus size={12} />
-            Append Recipes
-          </button>
-        </div>
-
-        {/* Flag Language Selectors */}
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {[
-            { code: 'English', label: 'EN 🇬🇧' },
-            { code: 'Bengali', label: 'BN 🇧🇩' },
-            { code: 'Hindi', label: 'HN 🇮🇳' },
-            { code: 'Hinglish', label: 'HNG 🗣️' },
-            { code: 'Oriya', label: 'OR 📿' }
-          ].map(lang => {
-            const isAct = activeLang === lang.code;
-            return (
+          {/* Top AI Status Indicator */}
+          <div style={{ ...styles.chatHeader, justifyContent: 'space-between', display: 'flex', width: '100%' }} className="glass-panel">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={styles.avatar}>👵</span>
+              <div style={styles.headerTitleContainer}>
+                <h3 style={styles.headerTitle}>Nani's AI Rasoi Saathi</h3>
+                <span style={styles.statusLabel}>
+                  {window.puter ? '● AI Assistant Connected' : '● Local Offline Backup Active'}
+                </span>
+              </div>
+            </div>
+            {chatHistory.length > 0 && (
               <button 
-                key={lang.code}
-                onClick={() => setActiveLang(lang.code)}
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  backgroundColor: isAct ? 'var(--primary-saffron)' : 'var(--pill-soft)',
-                  color: isAct ? '#FFFFFF' : 'var(--text-masala)',
-                  cursor: 'pointer',
-                  transition: 'var(--transition-cozy)'
-                }}
+                onClick={handleDownloadChat}
+                style={styles.downloadBtn}
+                title="Download Recipe Document"
               >
-                {lang.label}
+                📥 Download Doc
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Document Auto-Appender Form Panel */}
-      {showUploader && (
-        <div className="warm-card fade-in-slide" style={{
-          padding: '16px',
-          border: '2px dashed var(--primary-saffron)',
-          margin: '10px 0',
-          maxHeight: '380px',
-          overflowY: 'auto'
-        }}>
-          <h5 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-masala)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FileText size={16} style={{ color: 'var(--primary-saffron)' }} />
-            📚 Document Auto-Appender (Fuzzy search matching active)
-          </h5>
-          <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-            Paste raw recipe text or details from Google/LSI lists below. The smart parser will instantly index it.
-          </p>
-
-          <textarea 
-            placeholder="Paste recipe here...\nExample:\nTitle: Odia Kakara Pitha\nTime: 20 MINS\nIngredients:\n- Semolina\n- Grated coconut\n- Sugar\nSteps:\n- Boil water with semolina.\n- Stuff dough with coconut and fry until golden brown."
-            value={rawText}
-            onChange={(e) => handleRawTextChange(e.target.value)}
-            style={{
-              width: '100%',
-              height: '110px',
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-sand)',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              outline: 'none',
-              marginBottom: '12px',
-              resize: 'none'
-            }}
-          />
-
-          {parsedPreview && (
-            <div className="fade-in-slide" style={{
-              backgroundColor: 'var(--bg-warm)',
-              padding: '12px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-sand)',
-              marginBottom: '12px'
-            }}>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--primary-saffron)' }}>✓ SMART PARSED PREVIEW:</span>
-              <h6 style={{ fontSize: '12px', fontWeight: 800, margin: '2px 0', color: 'var(--text-masala)' }}>{parsedPreview.title}</h6>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Cook Time: {parsedPreview.time}</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' }}>
-                <div>
-                  <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-masala)' }}>Ingredients ({parsedPreview.ingredients.length}):</span>
-                  <ul style={{ paddingLeft: '12px', fontSize: '9px', margin: 0, color: 'var(--text-muted)' }}>
-                    {parsedPreview.ingredients.slice(0, 3).map((ing, i) => <li key={i}>{ing}</li>)}
-                    {parsedPreview.ingredients.length > 3 && <li>+ {parsedPreview.ingredients.length - 3} more</li>}
-                  </ul>
-                </div>
-                <div>
-                  <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-masala)' }}>Steps ({parsedPreview.steps.length}):</span>
-                  <ol style={{ paddingLeft: '12px', fontSize: '9px', margin: 0, color: 'var(--text-muted)' }}>
-                    {parsedPreview.steps.slice(0, 2).map((s, i) => <li key={i}>{s.slice(0, 25)}...</li>)}
-                  </ol>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {parsedPreview && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-masala)' }}>ASSIGN REGION:</label>
-                <select 
-                  value={uploadState} 
-                  onChange={(e) => setUploadState(e.target.value)}
-                  style={{ width: '100%', padding: '6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-sand)' }}
-                >
-                  <option value="West Bengal">West Bengal</option>
-                  <option value="Odisha">Odisha / Orissa</option>
-                  <option value="Punjab">Punjab</option>
-                  <option value="Delhi">Delhi</option>
-                  <option value="Maharashtra">Maharashtra</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-masala)' }}>DIET TYPE:</label>
-                <select 
-                  value={uploadDiet} 
-                  onChange={(e) => setUploadDiet(e.target.value)}
-                  style={{ width: '100%', padding: '6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-sand)' }}
-                >
-                  <option value="Vegetarian">Vegetarian</option>
-                  <option value="Non-Vegetarian">Non-Vegetarian</option>
-                  <option value="Jain Special">Jain Special</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {parsedPreview && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-masala)' }}>COOKING MOOD:</label>
-                <select 
-                  value={uploadMood} 
-                  onChange={(e) => setUploadMood(e.target.value)}
-                  style={{ width: '100%', padding: '6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-sand)' }}
-                >
-                  <option value="Light Comfort 🥣">Light Comfort</option>
-                  <option value="Spicy Feast 🌶️">Spicy Feast</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-masala)' }}>MEAL COURSE:</label>
-                <select 
-                  value={uploadCourse} 
-                  onChange={(e) => setUploadCourse(e.target.value)}
-                  style={{ width: '100%', padding: '6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border-sand)' }}
-                >
-                  <option value="Lunch/Dinner 🍽️">Lunch/Dinner</option>
-                  <option value="Breakfast/Snacks ☕">Breakfast/Snacks</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
-            {uploadStatusMsg && <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-coriander)' }}>{uploadStatusMsg}</span>}
-            <button 
-              onClick={handleConfirmUpload}
-              disabled={!parsedPreview}
-              className="btn-primary"
-              style={{ width: 'auto', padding: '8px 16px', fontSize: '12px', opacity: parsedPreview ? 1 : 0.5 }}
-            >
-              Confirm & Append
-            </button>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Messages Scroll Area */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '16px 0',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}>
-        {/* Guidelines Warning Info Box */}
-        <div className="warm-card" style={{ padding: '12px 16px', display: 'flex', gap: '10px', borderLeft: '4px solid var(--primary-saffron)' }}>
-          <Info size={18} style={{ color: 'var(--primary-saffron)', flexShrink: 0 }} />
-          <div>
-            <h5 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-masala)', margin: '0 0 2px' }}>
-              Typo-Resilient Offline Kitchen Active
-            </h5>
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '15px', margin: 0 }}>
-              Use the binary decision tree below to match recipes, or type in the search bar. Supports broken language and spelling errors!
-            </p>
-          </div>
-        </div>
-
-        {/* Render Chat Messages */}
-        {messages.map(msg => (
-          <div 
-            key={msg.id}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              width: '100%',
-              alignItems: msg.sender === 'User' ? 'flex-end' : 'flex-start',
-              marginBottom: '8px'
-            }}
-          >
-            <div className={`chat-bubble ${msg.sender === 'User' ? 'user' : 'ai'}`}>
-              {msg.messageText}
-            </div>
-            
-            {msg.hasRecipe && (
-              <div 
-                className="recipe-card-premium fade-in-slide"
-                style={{ 
-                  width: '92%', 
-                  marginTop: '8px', 
-                  alignSelf: 'flex-start', 
-                  border: '1.5px solid var(--border-sand)',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  backgroundColor: '#FFFFFF',
-                  overflow: 'hidden'
-                }}
-              >
-                <div 
-                  onClick={() => setExpandedRecipe(expandedRecipe === msg.recipeTitle ? null : msg.recipeTitle)}
-                  style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ChefHat size={16} style={{ color: 'var(--primary-saffron)' }} />
-                    <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-masala)' }}>
-                      {msg.recipeTitle}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{
-                      fontSize: '8px',
-                      fontWeight: 800,
-                      backgroundColor: 'var(--secondary-turmeric)',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      color: 'var(--text-masala)'
-                    }}>
-                      {msg.recipeTag}
-                    </span>
-                    {expandedRecipe === msg.recipeTitle ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </div>
-                </div>
-
-                {expandedRecipe === msg.recipeTitle && (
-                  <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border-sand)', paddingTop: '12px' }}>
-                    <div className="recipe-stats" style={{ marginBottom: '12px', display: 'flex', gap: '6px' }}>
-                      <div className="recipe-stat-box" style={{ flex: 1, padding: '6px', textAlign: 'center', backgroundColor: 'var(--bg-warm)', borderRadius: '6px' }}>
-                        <span className="recipe-stat-val" style={{ fontSize: '11px', display: 'block', fontWeight: 800 }}>{msg.recipeTime}</span>
-                        <span className="recipe-stat-lbl" style={{ fontSize: '7px', color: 'var(--text-light)' }}>COOK TIME</span>
-                      </div>
-                      <div className="recipe-stat-box" style={{ flex: 1, padding: '6px', textAlign: 'center', backgroundColor: 'var(--bg-warm)', borderRadius: '6px', borderLeft: '1px solid var(--border-sand)', borderRight: '1px solid var(--border-sand)' }}>
-                        <span className="recipe-stat-val" style={{ fontSize: '11px', display: 'block', fontWeight: 800 }}>Medium</span>
-                        <span className="recipe-stat-lbl" style={{ fontSize: '7px', color: 'var(--text-light)' }}>COMPLEXITY</span>
-                      </div>
-                      <div className="recipe-stat-box" style={{ flex: 1, padding: '6px', textAlign: 'center', backgroundColor: 'var(--bg-warm)', borderRadius: '6px' }}>
-                        <span className="recipe-stat-val" style={{ fontSize: '11px', display: 'block', color: 'var(--accent-coriander)', fontWeight: 800 }}>{msg.recipeTag}</span>
-                        <span className="recipe-stat-lbl" style={{ fontSize: '7px', color: 'var(--text-light)' }}>DIET TAG</span>
-                      </div>
-                    </div>
-
-                    <h6 style={{ fontSize: '11px', fontWeight: 800, marginBottom: '6px', color: 'var(--text-masala)', letterSpacing: '0.3px' }}>
-                      INGREDIENTS CHECKLIST
-                    </h6>
-                    <ul className="recipe-list" style={{ marginBottom: '12px', paddingLeft: '14px', fontSize: '11px', lineHeight: '16px' }}>
-                      {(msg.recipeIngredients || []).map((ing, i) => (
-                        <li key={i}>{ing} - <span style={{ color: 'var(--accent-coriander)', fontWeight: 700 }}>At Home</span></li>
-                      ))}
-                    </ul>
-
-                    <h6 style={{ fontSize: '11px', fontWeight: 800, marginBottom: '6px', color: 'var(--text-masala)', letterSpacing: '0.3px' }}>
-                      DIY COOKING STEPS
-                    </h6>
-                    <ol style={{ paddingLeft: '14px', fontSize: '11px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: '16px' }}>
-                      {(msg.recipeSteps || []).map((step, i) => (
-                        <li key={i} style={{ marginBottom: '4px' }}>{step}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-
-                {/* Apportion day selection bar for chat bubble recipe */}
-                <div style={{ 
-                  padding: '10px 14px', 
-                  borderTop: '1px solid var(--border-sand)', 
-                  backgroundColor: 'var(--bg-warm)', 
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}>
-                  {loadingDaySelectorId !== msg.recipeTitle ? (
-                    <button 
-                      onClick={() => setLoadingDaySelectorId(msg.recipeTitle)}
-                      className="btn-secondary"
-                      style={{
-                        padding: '6px 10px',
-                        fontSize: '10px',
-                        fontWeight: 800,
-                        backgroundColor: '#FFFFFF',
-                        borderColor: 'var(--border-sand)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        width: '100%',
-                        borderRadius: '6px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Sparkles size={11} style={{ color: 'var(--primary-saffron)' }} />
-                      {loadedRecipeId === msg.recipeTitle ? "✓ Loaded Successfully!" : "Load into Weekly Plan"}
-                    </button>
-                  ) : (
-                    <div className="fade-in-slide" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '8px', fontWeight: 800, color: 'var(--text-muted)', alignSelf: 'center' }}>
-                        SELECT CALENDAR DAY TO APPORTION MEAL:
-                      </span>
-                      <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px' }}>
-                        {getCurrentWeekDays().map(day => (
-                          <button 
-                            key={day}
-                            onClick={() => {
-                              const dummyRecipe = {
-                                title: msg.recipeTitle,
-                                time: msg.recipeTime,
-                                tag: msg.recipeTag,
-                                ingredients: msg.recipeIngredients,
-                                steps: msg.recipeSteps,
-                                complexity: 'Medium'
-                              };
-                              handleLoadToPlan(dummyRecipe, day);
-                            }}
-                            className="pill-chip"
-                            style={{ 
-                              fontSize: '8px', 
-                              padding: '4px 8px', 
-                              backgroundColor: 'var(--primary-saffron)', 
-                              color: '#FFFFFF',
-                              fontWeight: 800,
-                              flexShrink: 0,
-                              borderRadius: '4px',
-                              border: 'none',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {day}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+          {/* Messages Scroll Area */}
+          <div style={styles.messagesList} className="no-scrollbar">
+            {chatHistory.length === 0 && (
+              <div style={styles.emptyState}>
+                <span style={styles.naniBigAvatar}>👵</span>
+                <h3 className="text-serif" style={styles.emptyTitle}>Namaste, Beta!</h3>
+                <p style={styles.emptyDesc}>
+                  Aapke kitchen me aaj kaunsa samaan hai? Ya phir hafte ka menu plan karna chahte ho? 
+                  Mujhse bejhijhak poochiye! Main Hinglish me fully samajh sakti hoon.
+                </p>
+                <div style={styles.quickPrompts}>
+                  <button 
+                    style={styles.promptBtn} 
+                    onClick={() => handleSend("Aaj dinner me kya banaye? Suggest 2 simple North Indian items.")}
+                  >
+                    💡 "Aaj dinner me kya banaye?"
+                  </button>
+                  <button 
+                    style={styles.promptBtn} 
+                    onClick={() => handleSend("Mere paas Paneer aur Coriander hai. Quick lunch recipe batao.")}
+                  >
+                    💡 "Paneer aur Coriander se recipe"
+                  </button>
                 </div>
               </div>
             )}
-          </div>
-        ))}
 
-        {/* Dynamic Binary Decision tree popups */}
-        <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-          {treeState.step !== 'RESULTS' && !isInterviewActive && (
-            <div className="chat-bubble ai fade-in-slide" style={{ display: 'inline-block', maxWidth: '85%' }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: '13px' }}>
-                {BINARY_TREE_QUESTIONS[treeState.step]?.[activeLang] || BINARY_TREE_QUESTIONS[treeState.step]?.['English']}
-              </p>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                {BINARY_TREE_QUESTIONS[treeState.step]?.options.map(opt => (
-                  <button 
-                    key={opt.key}
-                    onClick={() => handleBinaryChoice(opt.key, opt[activeLang] || opt['English'])}
-                    className="btn-primary"
-                    style={{ flex: 1, padding: '8px 12px', fontSize: '12px', fontWeight: 800 }}
-                  >
-                    {opt[activeLang] || opt['English']}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Results Recipes display */}
-        {treeState.step === 'RESULTS' && !isInterviewActive && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--primary-saffron)', display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: '8px' }}>
-              <ChefHat size={14} />
-              OFFLINE MATCHED RECIPES
-            </span>
-
-            {activeRecipes.length > 0 ? (
-              activeRecipes.map(recipe => (
-                <div 
-                  key={recipe.title}
-                  className="recipe-card-premium fade-in-slide"
-                  style={{ width: '96%', alignSelf: 'center', margin: '0 0 10px' }}
-                >
-                  <div 
-                    onClick={() => setExpandedRecipe(expandedRecipe === recipe.title ? null : recipe.title)}
-                    style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <ChefHat size={18} style={{ color: 'var(--primary-saffron)' }} />
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-masala)' }}>
-                        {recipe.title}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{
-                        fontSize: '9px',
-                        fontWeight: 800,
-                        backgroundColor: 'var(--secondary-turmeric)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        color: 'var(--text-masala)'
-                      }}>
-                        {recipe.tag}
-                      </span>
-                      {expandedRecipe === recipe.title ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  </div>
-
-                  {expandedRecipe === recipe.title && (
-                    <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-sand)', paddingTop: '12px' }}>
-                      <div className="recipe-stats" style={{ marginBottom: '14px' }}>
-                        <div className="recipe-stat-box">
-                          <span className="recipe-stat-val">{recipe.time}</span>
-                          <span className="recipe-stat-lbl">COOK TIME</span>
-                        </div>
-                        <div className="recipe-stat-box" style={{ borderLeft: '1px solid var(--border-sand)', borderRight: '1px solid var(--border-sand)' }}>
-                          <span className="recipe-stat-val">{recipe.complexity}</span>
-                          <span className="recipe-stat-lbl">COMPLEXITY</span>
-                        </div>
-                        <div className="recipe-stat-box">
-                          <span className="recipe-stat-val" style={{ color: 'var(--accent-coriander)', fontWeight: 700 }}>
-                            {recipe.tag}
-                          </span>
-                          <span className="recipe-stat-lbl">DIET TAG</span>
-                        </div>
-                      </div>
-
-                      <h6 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '6px', color: 'var(--text-masala)' }}>
-                        INGREDIENTS CHECKLIST
-                      </h6>
-                      <ul className="recipe-list" style={{ marginBottom: '14px' }}>
-                        {recipe.ingredients.map((ing, i) => (
-                          <li key={i}>{ing} - <span style={{ color: 'var(--accent-coriander)', fontWeight: 700 }}>At Home</span></li>
-                        ))}
-                      </ul>
-
-                      <h6 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '6px', color: 'var(--text-masala)' }}>
-                        DIY COOKING STEPS
-                      </h6>
-                      <ol style={{ paddingLeft: '16px', fontSize: '12px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {recipe.steps.map((step, i) => (
-                          <li key={i} style={{ marginBottom: '6px' }}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-
-                  {/* Apportion day selection bar */}
-                  <div style={{ 
-                    padding: '10px 16px', 
-                    borderTop: '1px solid var(--border-sand)', 
-                    backgroundColor: 'var(--bg-warm)', 
-                    borderBottomLeftRadius: '12px', 
-                    borderBottomRightRadius: '12px',
+            {chatHistory.map((msg, index) => {
+              const isUser = msg.sender === 'user';
+              const isRecipe = !isUser && containsRecipeIndicators(msg.text);
+              const isDrawerOpen = selectedMsgIndex === index;
+              
+              return (
+                <div
+                  key={index}
+                  style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    {loadingDaySelectorId !== recipe.title ? (
-                      <button 
-                        onClick={() => setLoadingDaySelectorId(recipe.title)}
-                        className="btn-secondary"
-                        style={{
-                          padding: '8px',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          backgroundColor: '#FFFFFF',
-                          borderColor: 'var(--border-sand)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          width: '100%'
-                        }}
-                      >
-                        <Sparkles size={12} style={{ color: 'var(--primary-saffron)' }} />
-                        {loadedRecipeId === recipe.title ? "✓ Loaded Successfully!" : "Load into Weekly Plan"}
-                      </button>
-                    ) : (
-                      <div className="fade-in-slide" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-muted)', alignSelf: 'center' }}>
-                          SELECT CALENDAR DAY TO APPORTION MEAL:
-                        </span>
-                        <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px' }}>
-                          {getCurrentWeekDays().map(day => (
-                            <button 
-                              key={day}
-                              onClick={() => handleLoadToPlan(recipe, day)}
-                              className="pill-chip"
-                              style={{ 
-                                fontSize: '9px', 
-                                padding: '4px 8px', 
-                                backgroundColor: 'var(--primary-saffron)', 
-                                color: '#FFFFFF',
-                                fontWeight: 800,
-                                flexShrink: 0
-                              }}
-                            >
-                              {day}
-                            </button>
-                          ))}
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    width: '100%',
+                    gap: '4px'
+                  }}
+                >
+                  <div
+                    style={{
+                      ...styles.messageRow,
+                      justifyContent: isUser ? 'flex-end' : 'flex-start',
+                      width: '100%'
+                    }}
+                    className="animate-pop"
+                  >
+                    {!isUser && <span style={styles.bubbleAvatar}>👵</span>}
+                    <div
+                      style={{
+                        ...styles.bubble,
+                        background: isUser ? 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)' : '#fff',
+                        color: isUser ? '#fff' : '#1A0E08',
+                        borderTopRightRadius: isUser ? '4px' : '16px',
+                        borderTopLeftRadius: isUser ? '16px' : '4px',
+                        boxShadow: isUser ? '0 4px 10px rgba(232, 105, 42, 0.2)' : '0 2px 8px rgba(0,0,0,0.05)',
+                        maxWidth: '82%'
+                      }}
+                    >
+                      {isUser ? (
+                        <p style={styles.bubbleText}>{msg.text}</p>
+                      ) : (
+                        <div style={styles.bubbleText}>
+                          {renderMessageText(msg.text)}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Steve Jobs 1-Click Interactive Thali Injection Bar */}
+                  {isRecipe && (
+                    <div style={{ paddingLeft: '28px', marginTop: '4px' }} className="animate-fade-in">
+                      <button
+                        style={styles.addToPlannerBtn}
+                        onClick={() => setSelectedMsgIndex(isDrawerOpen ? null : index)}
+                      >
+                        📅 Add to Weekly Planner Thali
+                      </button>
+                      
+                      {isDrawerOpen && (
+                        <div style={styles.injectionDrawer} className="glass-card animate-slide-up">
+                          <h4 style={styles.drawerTitle} className="text-serif">Choose Slot</h4>
+                          <div style={styles.drawerSelectorRow}>
+                            <select 
+                              value={selectedDay} 
+                              onChange={e => setSelectedDay(e.target.value)}
+                              style={styles.drawerSelect}
+                            >
+                              {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
+                                <option key={day} value={day}>{day}</option>
+                              ))}
+                            </select>
+                            
+                            <select 
+                              value={selectedMeal} 
+                              onChange={e => setSelectedMeal(e.target.value)}
+                              style={styles.drawerSelect}
+                            >
+                              <option value="breakfast">🍳 Breakfast</option>
+                              <option value="lunch">🍽️ Lunch</option>
+                              <option value="snack">☕ Snack</option>
+                              <option value="dinner">🌙 Dinner</option>
+                            </select>
+                          </div>
+                          
+                          <div style={styles.drawerActionRow}>
+                            <button 
+                              style={styles.drawerCancelBtn} 
+                              onClick={() => setSelectedMsgIndex(null)}
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              style={styles.drawerSaveBtn}
+                              onClick={() => handleLoadToPlanner(msg.text, index)}
+                            >
+                              Save Thali 🎉
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {isLoading && (
+              <div style={styles.messageRow} className="animate-pop">
+                <span style={styles.bubbleAvatar}>👵</span>
+                <div style={{ ...styles.bubble, background: '#fff', borderTopLeftRadius: '4px' }}>
+                  <div style={styles.typing}>
+                    <span className="dot"></span>
+                    <span className="dot" style={{ animationDelay: '0.2s' }}></span>
+                    <span className="dot" style={{ animationDelay: '0.4s' }}></span>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="warm-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                No direct matching recipes in the offline knowledge base for this configuration. Reset choices to start over!
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
-        )}
 
-        <div ref={messagesEndRef} />
-      </div>
+          {/* Dynamic Voice Recording Waveform Overlay */}
+          {isListening && (
+            <div style={styles.waveformOverlay} className="glass-panel animate-fade-in">
+              <div style={styles.waveformContainer}>
+                <span className="wave-bar bar-1"></span>
+                <span className="wave-bar bar-2"></span>
+                <span className="wave-bar bar-3"></span>
+                <span className="wave-bar bar-4"></span>
+                <span className="wave-bar bar-5"></span>
+              </div>
+              <p style={styles.waveformText}>Nani is listening to your Hinglish voice... Speak now!</p>
+            </div>
+          )}
 
-      {/* Input bar Footer controls */}
-      <div className="no-print" style={{
-        paddingTop: '10px',
-        borderTop: '1px solid var(--border-sand)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        backgroundColor: 'var(--bg-warm)'
-      }}>
-        <button 
-          onClick={() => {
-            onClearChat();
-            handleResetTree();
-          }}
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            backgroundColor: 'var(--pill-soft)',
-            border: '1px solid var(--border-sand)',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
-          }}
-          title="Clear Chat History"
-        >
-          <Trash2 size={16} />
-        </button>
-
-        <input 
-          type="text"
-          placeholder={`Fuzzy search recipe... (e.g. possto, shorse mach)`}
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
-          style={{
-            flex: 1,
-            padding: '12px 14px',
-            borderRadius: '10px',
-            border: '1px solid var(--border-sand)',
-            fontSize: '14px',
-            fontWeight: 600,
-            outline: 'none',
-            fontFamily: 'inherit',
-            color: 'var(--text-masala)'
-          }}
-        />
-
-        <button 
-          onClick={handleSearchSubmit}
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            backgroundColor: 'var(--primary-saffron)',
-            border: 'none',
-            color: '#FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(211, 84, 0, 0.2)'
-          }}
-        >
-          <Search size={16} />
-        </button>
-      </div>
+          {/* Input controls container */}
+          <div style={styles.inputArea} className="glass-panel">
+            <button
+              style={{
+                ...styles.micBtn,
+                background: isListening ? '#C0392B' : '#FEF3DC',
+                color: isListening ? '#fff' : '#E8692A'
+              }}
+              onClick={handleVoiceListen}
+              title="Hands-free Voice Mode (Talk to Nani)"
+            >
+              🎤
+            </button>
+            <input
+              type="text"
+              placeholder={isListening ? "Main sun rahi hoon beta..." : "Kuch poochna hai? Type here..."}
+              style={styles.chatInput}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+            />
+            <button style={styles.sendBtn} onClick={() => handleSend()}>
+              ➔
+            </button>
+          </div>
         </>
       )}
-
     </div>
   );
+}
+
+const styles = {
+  chatContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    width: '100%',
+    background: '#FDF8F2',
+    position: 'relative'
+  },
+  chatHeader: {
+    padding: '16px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    borderBottom: '1px solid rgba(74, 44, 26, 0.1)',
+    zIndex: 10
+  },
+  avatar: {
+    fontSize: '28px'
+  },
+  headerTitleContainer: {
+    textAlign: 'left'
+  },
+  headerTitle: {
+    fontSize: '16px',
+    fontWeight: '800',
+    color: '#1A0E08',
+    margin: 0
+  },
+  statusLabel: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#0D6E4E',
+    marginTop: '2px',
+    display: 'block'
+  },
+  downloadBtn: {
+    background: '#FEF3DC',
+    color: '#C4501A',
+    border: '1.5px solid rgba(232, 105, 42, 0.2)',
+    borderRadius: '12px',
+    padding: '6px 12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'all 0.2s ease'
+  },
+  messagesList: {
+    flex: 1,
+    padding: '20px',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px'
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    margin: 'auto 0',
+    padding: '0 10px'
+  },
+  naniBigAvatar: {
+    fontSize: '64px',
+    marginBottom: '16px',
+    animation: 'bounce 2s infinite'
+  },
+  emptyTitle: {
+    fontSize: '26px',
+    color: '#1A0E08',
+    marginBottom: '8px'
+  },
+  emptyDesc: {
+    fontSize: '14px',
+    lineHeight: '1.5',
+    color: '#7A5540',
+    maxWidth: '320px',
+    marginBottom: '24px'
+  },
+  quickPrompts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    width: '100%'
+  },
+  promptBtn: {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    border: '1px solid rgba(74, 44, 26, 0.1)',
+    background: '#fff',
+    color: '#4A2C1A',
+    fontWeight: '600',
+    fontSize: '13px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+    transition: 'all 0.2s ease'
+  },
+  messageRow: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: '8px'
+  },
+  bubbleAvatar: {
+    fontSize: '20px',
+    marginBottom: '4px'
+  },
+  bubble: {
+    padding: '12px 16px',
+    borderRadius: '16px',
+    textAlign: 'left',
+    border: '1px solid rgba(74, 44, 26, 0.08)'
+  },
+  bubbleText: {
+    fontSize: '14px',
+    lineHeight: '1.45',
+    margin: 0,
+    whiteSpace: 'pre-wrap'
+  },
+  addToPlannerBtn: {
+    background: '#FEF3DC',
+    color: '#E8692A',
+    border: '1px dashed #E8692A',
+    borderRadius: '10px',
+    padding: '6px 12px',
+    fontSize: '12px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    marginTop: '2px'
+  },
+  injectionDrawer: {
+    marginTop: '8px',
+    padding: '14px',
+    borderRadius: '12px',
+    background: '#fff',
+    border: '1px solid rgba(74, 44, 26, 0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    width: '240px'
+  },
+  drawerTitle: {
+    fontSize: '13px',
+    margin: 0,
+    color: '#4A2C1A'
+  },
+  drawerSelectorRow: {
+    display: 'flex',
+    gap: '8px'
+  },
+  drawerSelect: {
+    flex: 1,
+    padding: '6px 8px',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '12px',
+    fontFamily: 'Outfit, sans-serif',
+    outline: 'none',
+    background: '#FFFDF9'
+  },
+  drawerActionRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '8px',
+    marginTop: '4px'
+  },
+  drawerCancelBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#7A5540',
+    fontSize: '11px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    padding: '4px 8px'
+  },
+  drawerSaveBtn: {
+    background: 'linear-gradient(135deg, #0D6E4E 0%, #1B7A4E 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '6px 12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    cursor: 'pointer'
+  },
+  toast: {
+    position: 'absolute',
+    top: '74px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#1B7A4E',
+    color: '#fff',
+    padding: '8px 16px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: '700',
+    zIndex: 999,
+    boxShadow: '0 4px 12px rgba(27, 122, 78, 0.3)'
+  },
+  waveformOverlay: {
+    position: 'absolute',
+    bottom: '80px',
+    left: '20px',
+    right: '20px',
+    padding: '16px',
+    borderRadius: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+    zIndex: 99
+  },
+  waveformContainer: {
+    display: 'flex',
+    gap: '4px',
+    alignItems: 'center',
+    height: '32px'
+  },
+  waveformText: {
+    fontSize: '12px',
+    color: '#C4501A',
+    fontWeight: '700',
+    margin: 0
+  },
+  typing: {
+    display: 'flex',
+    gap: '4px',
+    padding: '4px 8px'
+  },
+  inputArea: {
+    padding: '14px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    borderTop: '1px solid rgba(74, 44, 26, 0.1)',
+    zIndex: 10
+  },
+  micBtn: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    border: 'none',
+    fontSize: '20px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s ease'
+  },
+  chatInput: {
+    flex: 1,
+    padding: '12px 18px',
+    borderRadius: '24px',
+    border: '1px solid rgba(74, 44, 26, 0.15)',
+    fontSize: '15px',
+    fontFamily: 'Outfit, sans-serif',
+    outline: 'none',
+    background: '#fff'
+  },
+  sendBtn: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)',
+    color: '#fff',
+    border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+};
+
+// Add typing dots and breathing voice waveform styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = `
+    .dot {
+      width: 6px;
+      height: 6px;
+      background-color: #E8692A;
+      border-radius: 50%;
+      display: inline-block;
+      animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+    
+    .wave-bar {
+      width: 4px;
+      background-color: #E8692A;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    .bar-1 { height: 12px; animation: wavePulse 1.2s infinite ease-in-out; }
+    .bar-2 { height: 24px; animation: wavePulse 0.9s infinite ease-in-out; }
+    .bar-3 { height: 32px; animation: wavePulse 1.4s infinite ease-in-out; }
+    .bar-4 { height: 20px; animation: wavePulse 1s infinite ease-in-out; }
+    .bar-5 { height: 10px; animation: wavePulse 0.8s infinite ease-in-out; }
+    
+    @keyframes wavePulse {
+      0%, 100% { transform: scaleY(0.4); }
+      50% { transform: scaleY(1); }
+    }
+  `;
+  document.head.appendChild(styleSheet);
 }

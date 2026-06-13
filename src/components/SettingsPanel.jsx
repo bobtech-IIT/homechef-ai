@@ -1,359 +1,242 @@
 import React, { useState } from 'react';
-import { Users, RefreshCw, UserPlus, Trash2, ShieldCheck } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
-export default function SettingsPanel({
-  profile,
-  members,
-  restrictions,
-  onAddMember,
-  onDeleteMember,
-  onToggleRestriction,
-  onResetWizard,
-  onHardReset,
-  onUpdateArchetype
-}) {
+export default function SettingsPanel({ isOpen, onClose }) {
+  const { state, dispatch } = useApp();
+  const { profile } = state;
+  const [resetConfirm, setResetConfirm] = useState(false);
 
-  const [memberName, setMemberName] = useState('');
-  const [memberAge, setMemberAge] = useState('Adult');
-  const [memberRestrictions, setMemberRestrictions] = useState('');
-  const [memberFavDish, setMemberFavDish] = useState('');
+  if (!isOpen) return null;
 
-  const handleAddMember = (e) => {
-    e.preventDefault();
-    if (!memberName.trim()) return;
-    onAddMember(memberName, memberAge, memberRestrictions, memberFavDish);
-    // reset form
-    setMemberName('');
-    setMemberAge('Adult');
-    setMemberRestrictions('');
-    setMemberFavDish('');
+  const handleHardReset = () => {
+    if (!resetConfirm) {
+      setResetConfirm(true);
+    } else {
+      dispatch({ type: 'RESET_ALL' });
+      localStorage.removeItem('homechef_v3_state');
+      localStorage.removeItem('homechef_ai_cache_v3');
+      setResetConfirm(false);
+      onClose();
+      // Reload to restart Setup Wizard
+      window.location.reload();
+    }
   };
 
   return (
-    <div className="fade-in-slide" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+    <div style={styles.overlay} className="animate-fade-in">
+      <div style={styles.sidebar} className="animate-slide-up">
+        {/* Header */}
+        <div style={styles.header}>
+          <h2 className="text-serif" style={styles.title}>Settings</h2>
+          <button style={styles.closeBtn} onClick={onClose}>✕</button>
+        </div>
 
-      {/* 2. Family Members Profiles manager */}
-      <div className="warm-card" style={{ padding: '18px 20px' }}>
-        <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-masala)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <Users size={18} style={{ color: 'var(--primary-saffron)' }} />
-          Manage Family Profiles
-        </h4>
+        {/* Profile Card Summary */}
+        <div style={styles.profileCard}>
+          <div style={styles.avatar}>🏡</div>
+          <div style={styles.profileInfo}>
+            <h3 style={styles.profileName}>{profile.familyName || 'Sharma'} Family</h3>
+            <span style={styles.profileDetails}>
+              {profile.regionalPalate.toUpperCase()} Cuisine • {profile.dietType}
+            </span>
+          </div>
+        </div>
 
-        {/* Members list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
-          {members.map(member => (
-            <div 
-              key={member.id}
+        {/* Configurations List */}
+        <div style={styles.sectionsList}>
+          <div style={styles.section}>
+            <h4 style={styles.sectionTitle}>Active Diet Preferences</h4>
+            <div style={styles.preferenceRow}>
+              <span>Diet:</span>
+              <strong style={{ color: '#0D6E4E' }}>{profile.dietType}</strong>
+            </div>
+            <div style={styles.preferenceRow}>
+              <span>Cuisine style:</span>
+              <strong style={{ color: '#E8692A' }}>{profile.regionalPalate.toUpperCase()}</strong>
+            </div>
+            <div style={styles.preferenceRow}>
+              <span>Size:</span>
+              <strong>{profile.familySize}</strong>
+            </div>
+          </div>
+
+          <div style={styles.section}>
+            <h4 style={styles.sectionTitle}>Privacy & Policies</h4>
+            <p style={styles.policyText}>
+              HomeChef AI v3 utilizes secure <strong style={{ color: '#E8692A' }}>Advanced Cloud AI</strong>. All cooking data stays in your browser cache.
+            </p>
+          </div>
+
+          {/* Dangerous Zone (de-emphasized as requested in audit) */}
+          <div style={styles.dangerZone}>
+            <h4 style={styles.dangerTitle}>Danger Zone</h4>
+            <p style={styles.dangerDesc}>Deletes all setup data, cached menus, and reset preferences.</p>
+            <button
               style={{
-                padding: '12px',
-                borderRadius: '12px',
-                backgroundColor: 'var(--bg-warm)',
-                border: '1px solid var(--border-sand)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                ...styles.resetBtn,
+                background: resetConfirm ? '#C0392B' : '#F9F1E5',
+                color: resetConfirm ? '#fff' : '#C0392B',
+                borderColor: resetConfirm ? '#C0392B' : 'rgba(192, 57, 43, 0.2)'
               }}
+              onClick={handleHardReset}
             >
-              <div>
-                <h5 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-masala)' }}>
-                  {member.name} ({member.ageGroup})
-                </h5>
-                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {member.restrictions ? `Avoids: ${member.restrictions}` : 'No food constraints'}
-                  {member.favDish && ` • Fav: ${member.favDish}`}
-                </p>
-              </div>
-
-              {/* Prevent deleting standard seeds for demo stability */}
-              <button 
-                onClick={() => onDeleteMember(member.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-light)',
-                  cursor: 'pointer',
-                  padding: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'var(--transition-cozy)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-tomato)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-light)'}
-              >
-                <Trash2 size={16} />
+              {resetConfirm ? '⚠️ Tap again to confirm deletion' : 'Clear Saved Data & Reset'}
+            </button>
+            {resetConfirm && (
+              <button style={styles.cancelResetBtn} onClick={() => setResetConfirm(false)}>
+                Cancel Reset
               </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Add Member inline form */}
-        <form onSubmit={handleAddMember} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid var(--border-sand)', paddingTop: '16px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-masala)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <UserPlus size={14} style={{ color: 'var(--primary-saffron)' }} />
-            Add Family Member
-          </span>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <input 
-                type="text" 
-                placeholder="Name (e.g. Grandpa)"
-                value={memberName}
-                onChange={(e) => setMemberName(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-sand)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  outline: 'none',
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-            
-            <div>
-              <select 
-                value={memberAge}
-                onChange={(e) => setMemberAge(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-sand)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  backgroundColor: '#FFFFFF'
-                }}
-              >
-                <option value="Adult">Adult</option>
-                <option value="Child">Child</option>
-                <option value="Elderly">Elderly</option>
-              </select>
-            </div>
+            )}
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <input 
-                type="text" 
-                placeholder="Allergy (e.g. No Salt)"
-                value={memberRestrictions}
-                onChange={(e) => setMemberRestrictions(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-sand)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  outline: 'none',
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-            <div>
-              <input 
-                type="text" 
-                placeholder="Favorite dish"
-                value={memberFavDish}
-                onChange={(e) => setMemberFavDish(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-sand)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  outline: 'none',
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-          </div>
-
-          <button 
-            type="submit"
-            className="btn-secondary"
-            style={{
-              padding: '8px',
-              fontSize: '12px',
-              fontWeight: 700,
-              backgroundColor: 'var(--pill-soft)'
-            }}
-          >
-            Add Profile
-          </button>
-        </form>
-      </div>
-
-      {/* 3. Cooking Style & Lifestyle Profile */}
-      <div className="warm-card" style={{ padding: '18px 20px' }}>
-        <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-masala)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <ShieldCheck size={18} style={{ color: 'var(--primary-saffron)' }} />
-          Cooking Style & Lifestyle Profile
-        </h4>
-        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '14px' }}>
-          Select global rules active in your home kitchen. Homechef AI adapts suggestions automatically.
-        </p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          {[
-            'Vegetarian',
-            'Non-Vegetarian',
-            'Jain',
-            'Vegan',
-            'Dairy Free',
-            'No Spicy',
-            'Gluten Free',
-            'Low Sodium',
-            'Sugar Free',
-            'Peanut Free'
-          ].map(rule => {
-            const isDietRule = rule === 'Vegetarian' || rule === 'Non-Vegetarian' || rule === 'Jain' || rule === 'Vegan';
-            const isActive = isDietRule
-              ? profile.dietaryPreference === rule
-              : restrictions.includes(rule);
-            const isDisabled = profile.regionalPalate === 'Gujarat' && rule === 'Non-Vegetarian';
-            return (
-              <label 
-                key={rule}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  color: isDisabled ? 'var(--text-muted)' : 'var(--text-masala)',
-                  cursor: isDisabled ? 'not-allowed' : 'pointer',
-                  opacity: isDisabled ? 0.5 : 1,
-                  padding: '6px 0'
-                }}
-              >
-                <input 
-                  type="checkbox" 
-                  checked={isActive}
-                  disabled={isDisabled}
-                  onChange={() => !isDisabled && onToggleRestriction(rule)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    accentColor: 'var(--primary-saffron)',
-                    cursor: isDisabled ? 'not-allowed' : 'pointer'
-                  }}
-                />
-                {rule} {isDisabled && '🔒'}
-              </label>
-            );
-          })}
         </div>
       </div>
-
-      {/* 4. Cooking Style & Lifestyle Mode */}
-      <div className="warm-card" style={{ padding: '18px 20px' }}>
-        <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-masala)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <ShieldCheck size={18} style={{ color: 'var(--primary-saffron)' }} />
-          Cooking Style &amp; Lifestyle Mode
-        </h4>
-        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '14px' }}>
-          Select a lifestyle mode to dynamically tailor ingredients, spice levels, and presentation aesthetics across all recipes.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[
-            { key: 'STANDARD', label: 'Standard Household Mode 🏠', desc: 'Standard regional recipe preparation.' },
-            { key: 'EUROPEAN_VC_WIFE', label: 'Health-Conscious Bio-Hacker 🌿', desc: 'Low glycemic, adaptogenic, extra virgin oils, clean plating.' },
-            { key: 'SHARK_TANK_JUDGE', label: 'High-Performance Cognitive Mode 🔥', desc: 'Ragi/quinoa base, high protein, Brahmi ghee, dramatic plating.' }
-          ].map(arch => (
-            <label 
-              key={arch.key}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                fontSize: '13px',
-                fontWeight: 700,
-                color: 'var(--text-masala)',
-                cursor: 'pointer',
-                padding: '10px',
-                borderRadius: '10px',
-                border: profile.archetype === arch.key ? '2px solid var(--primary-saffron)' : '1px solid var(--border-sand)',
-                backgroundColor: profile.archetype === arch.key ? 'var(--secondary-light)' : 'transparent',
-                transition: 'var(--transition-cozy)'
-              }}
-            >
-              <input 
-                type="radio" 
-                name="archetype"
-                checked={profile.archetype === arch.key}
-                onChange={() => onUpdateArchetype(arch.key)}
-                style={{ marginTop: '3px', accentColor: 'var(--primary-saffron)', cursor: 'pointer' }}
-              />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span>{arch.label}</span>
-                <span style={{ fontSize: '10px', fontWeight: 500, color: 'var(--text-muted)' }}>{arch.desc}</span>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-
-      {/* 5. Reset & Wizard Actions config options */}
-      <div className="no-print" style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        gap: '14px', 
-        marginTop: '10px', 
-        marginBottom: '20px' 
-      }}>
-        <button 
-          onClick={onResetWizard}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-light)',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary-saffron)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-light)'}
-        >
-          <RefreshCw size={12} />
-          Re-run Setup Wizard preferences
-        </button>
-
-        <button 
-          onClick={onHardReset}
-          className="btn-primary"
-          style={{
-            backgroundColor: 'var(--accent-tomato)',
-            boxShadow: '0 2px 8px rgba(192, 57, 43, 0.2)',
-            padding: '10px 20px',
-            fontSize: '13px',
-            fontWeight: 800,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            width: 'auto'
-          }}
-        >
-          <Trash2 size={16} />
-          Hard Reset / Clear All Saved Data
-        </button>
-      </div>
-
     </div>
   );
 }
+
+const styles = {
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(26, 14, 8, 0.4)',
+    backdropFilter: 'blur(4px)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    zIndex: 100
+  },
+  sidebar: {
+    width: '100%',
+    maxHeight: '80%',
+    background: '#FDF8F2',
+    borderTopLeftRadius: '28px',
+    borderTopRightRadius: '28px',
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    overflowY: 'auto'
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottom: '1px solid rgba(74, 44, 26, 0.1)',
+    paddingBottom: '12px'
+  },
+  title: {
+    fontSize: '24px',
+    color: '#1A0E08',
+    margin: 0
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '20px',
+    color: '#7A5540',
+    cursor: 'pointer'
+  },
+  profileCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '16px',
+    background: 'linear-gradient(135deg, #FEF3DC 0%, #F9F1E5 100%)',
+    borderRadius: '16px',
+    border: '1px solid rgba(74, 44, 26, 0.1)',
+    textAlign: 'left'
+  },
+  avatar: {
+    fontSize: '32px'
+  },
+  profileInfo: {
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  profileName: {
+    fontSize: '18px',
+    fontWeight: '800',
+    color: '#1A0E08'
+  },
+  profileDetails: {
+    fontSize: '12px',
+    color: '#7A5540',
+    fontWeight: '700',
+    marginTop: '2px'
+  },
+  sectionsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    textAlign: 'left'
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  sectionTitle: {
+    fontSize: '14px',
+    fontWeight: '800',
+    color: '#E8692A',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginBottom: '4px'
+  },
+  preferenceRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '14px',
+    color: '#4A2C1A',
+    borderBottom: '1px solid rgba(74, 44, 26, 0.05)',
+    paddingBottom: '6px'
+  },
+  policyText: {
+    fontSize: '13px',
+    lineHeight: '1.45',
+    color: '#7A5540'
+  },
+  dangerZone: {
+    borderTop: '1px dashed rgba(192, 57, 43, 0.2)',
+    paddingTop: '16px',
+    marginTop: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  dangerTitle: {
+    fontSize: '14px',
+    fontWeight: '800',
+    color: '#C0392B',
+    textTransform: 'uppercase'
+  },
+  dangerDesc: {
+    fontSize: '12px',
+    color: '#7A5540',
+    lineHeight: '1.4'
+  },
+  resetBtn: {
+    width: '100%',
+    border: '1px solid',
+    borderRadius: '12px',
+    padding: '12px',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  cancelResetBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#7A5540',
+    fontSize: '13px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    marginTop: '4px',
+    alignSelf: 'center'
+  }
+};
