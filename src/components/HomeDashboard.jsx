@@ -135,6 +135,16 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const handleMoodSelect = async (mood, label) => {
     setIsMoodLoading(true);
     setMoodResponse('');
+
+    // Trigger guest auth check on click if not authenticated
+    if (window.puter && window.puter.auth && !window.puter.auth.isSignedIn()) {
+      try {
+        await window.puter.auth.signIn({ attempt_temp_user_creation: true });
+      } catch (err) {
+        console.warn("Guest sign-in on mood select failed:", err);
+      }
+    }
+
     const prompt = `Family mood is: ${mood} (${label}). Regional palate is: ${profile.regionalPalate}. Diet type: ${profile.dietType}. Suggest 3 comforting, quick Indian home-cookable meal ideas for this mood. Speak in an encouraging, warm Hinglish style. Keep it under 150 words.`;
     
     try {

@@ -254,6 +254,15 @@ export default function AIChatPlanner() {
     const text = textToSend || input;
     if (!text.trim()) return;
 
+    // Trigger guest auth check on send button click if not authenticated
+    if (window.puter && window.puter.auth && !window.puter.auth.isSignedIn()) {
+      try {
+        await window.puter.auth.signIn({ attempt_temp_user_creation: true });
+      } catch (err) {
+        console.warn("Guest sign-in on send click failed:", err);
+      }
+    }
+
     setInput('');
     
     const userMsg = { sender: 'user', text: text, timestamp: Date.now() };

@@ -105,13 +105,19 @@ export function AppProvider({ children }) {
       const savedState = localStorage.getItem('homechef_v3_state');
       if (savedState) {
         const parsed = JSON.parse(savedState);
+        const hasCulinaryArchetype = parsed.profile && parsed.profile.culinaryArchetype;
+        const profile = {
+          ...INITIAL_STATE.profile,
+          ...(parsed.profile || {})
+        };
+        // If they had completed setup but had no culinaryArchetype (old v2 state), force setup to rerun
+        if (profile.isSetupComplete && !hasCulinaryArchetype) {
+          profile.isSetupComplete = false;
+        }
         return {
           ...INITIAL_STATE,
           ...parsed,
-          profile: {
-            ...INITIAL_STATE.profile,
-            ...(parsed.profile || {})
-          }
+          profile
         };
       }
       return INITIAL_STATE;

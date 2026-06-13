@@ -34,6 +34,13 @@ export default function SetupWizard() {
   };
 
   const handleBypassLogin = () => {
+    // Attempt silent guest sign in on completion of onboarding wizard (user click event)
+    if (window.puter && window.puter.auth && !window.puter.auth.isSignedIn()) {
+      window.puter.auth.signIn({ attempt_temp_user_creation: true }).catch(err => {
+        console.warn("Guest session failed to initialize:", err);
+      });
+    }
+
     // Finalize and seed the weekly meal plan!
     const initialPlan = seedWeeklyMenu(formData);
     dispatch({ type: 'COMPLETE_SETUP', payload: formData });

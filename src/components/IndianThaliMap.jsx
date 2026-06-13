@@ -151,6 +151,19 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
     THALI_DATA[state].dish.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Dynamic Map Transform calculation
+  let mapTransform = 'scale(1) translate(0, 0)';
+  if (selectedState) {
+    const pos = STATE_COORDINATES[selectedState];
+    if (pos) {
+      const x = 50 - parseFloat(pos.left);
+      const y = 50 - parseFloat(pos.top);
+      mapTransform = `scale(2.5) translate(${x}%, ${y}%)`;
+    }
+  } else if (activeZone) {
+    mapTransform = `scale(${ZONE_ZOOMS[activeZone].scale}) translate(${ZONE_ZOOMS[activeZone].x}%, ${ZONE_ZOOMS[activeZone].y}%)`;
+  }
+
   return (
     <div style={styles.fullscreenOverlay}>
       <style>{`
@@ -206,7 +219,166 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
 
       {/* Main Container */}
       <div style={styles.bodyContent}>
-        {!isZoomed ? (
+        {/* Map Canvas - Always visible! */}
+        <div style={styles.mapCanvas}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            transition: 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)',
+            transformOrigin: 'center center',
+            transform: mapTransform
+          }}>
+            {/* Stylized background outline map of India - Saffron glow! */}
+            <svg viewBox="0 0 100 100" style={styles.indiaSilhouette}>
+              <polygon 
+                points="45,5 50,8 50,15 54,20 62,28 70,27 74,28 90,24 92,34 88,42 78,42 72,46 64,55 56,68 50,84 47,92 42,82 36,70 32,62 30,56 14,46 12,40 22,30 30,20 38,12" 
+                style={{ 
+                  fill: 'rgba(232, 105, 42, 0.15)', 
+                  stroke: '#E8692A', 
+                  strokeWidth: '0.9',
+                  filter: 'drop-shadow(0 0 8px rgba(232, 105, 42, 0.4))',
+                  strokeDasharray: '2, 1'
+                }} 
+              />
+            </svg>
+
+            {/* Visual grid constellation lines */}
+            {!selectedState && (
+              <svg style={styles.mapLinesSvg}>
+                <line x1="42%" y1="15%" x2="16%" y2="48%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="42%" y1="15%" x2="48%" y2="47%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="42%" y1="15%" x2="84%" y2="32%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="16%" y1="48%" x2="48%" y2="47%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="48%" y1="47%" x2="72%" y2="48%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="72%" y1="48%" x2="84%" y2="32%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="16%" y1="48%" x2="44%" y2="78%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="48%" y1="47%" x2="44%" y2="78%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+                <line x1="72%" y1="48%" x2="44%" y2="78%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
+              </svg>
+            )}
+
+            {/* 1. Default Mode: Render the 6 Zone Markers */}
+            {!selectedState && !activeZone && Object.entries(ZONE_POSITIONS).map(([zoneName, pos]) => (
+              <div 
+                key={zoneName} 
+                style={{ ...styles.zoneMarker, top: pos.top, left: pos.left }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveZone(zoneName);
+                }}
+              >
+                <div className="pulse-effect" style={styles.pulsePin} />
+                <span style={styles.zonePinLabel}>{zoneName.split(' ')[0]}</span>
+              </div>
+            ))}
+
+            {/* 2. Zoomed Zone Mode: Render State Pins for the Active Zone */}
+            {!selectedState && activeZone && ZONES[activeZone].map(stateName => {
+              const pos = STATE_COORDINATES[stateName];
+              if (!pos) return null;
+              const activeScale = ZONE_ZOOMS[activeZone].scale;
+              
+              return (
+                <div 
+                  key={stateName} 
+                  style={{ 
+                    ...styles.statePin, 
+                    top: pos.top, 
+                    left: pos.left,
+                    transform: `translate(-50%, -50%) scale(${1 / activeScale})`
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStateClick(stateName);
+                  }}
+                >
+                  <div className="pulse-effect" style={{ ...styles.pulsePin, backgroundColor: '#E8692A' }} />
+                  <span style={styles.statePinLabel}>{stateName}</span>
+                </div>
+              );
+            })}
+
+            {/* 3. Selected State Mode: Render a single glowing focused state pin */}
+            {selectedState && (
+              <div 
+                style={{ 
+                  ...styles.statePin, 
+                  top: STATE_COORDINATES[selectedState]?.top || '50%', 
+                  left: STATE_COORDINATES[selectedState]?.left || '50%',
+                  transform: `translate(-50%, -50%) scale(0.45)` // Inverse of map scale 2.5
+                }}
+              >
+                <div className="pulse-effect" style={{ ...styles.pulsePin, backgroundColor: '#E8692A', width: '18px', height: '18px' }} />
+                <span style={{ ...styles.statePinLabel, fontSize: '11px', padding: '3px 8px', borderColor: '#E8692A' }}>
+                  📍 {selectedState}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Overlay Floating Zoom Out button */}
+          {(activeZone || selectedState) && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedState) {
+                  handleBackToMap();
+                } else {
+                  setActiveZone(null);
+                }
+              }}
+              style={styles.floatingZoomOutBtn}
+            >
+              🔍 Zoom Out
+            </button>
+          )}
+
+          <span style={styles.mapHintText}>
+            {selectedState ? `Zoomed in on ${selectedState}` : activeZone ? "Tap a state pin to explore signature dishes" : "Tap any zone to zoom and view states"}
+          </span>
+        </div>
+
+        {/* Dynamic Detail Card / List view bottom section */}
+        {selectedState ? (
+          /* Zoomed Interactive Detail Drawer View */
+          <div style={styles.detailCard} className="animate-slide-up">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span style={styles.detailCardLabel}>
+                  {selectedState} SPECIALTY
+                </span>
+                <h3 style={styles.detailCardTitle}>
+                  {THALI_DATA[selectedState].dish}
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {THALI_DATA[selectedState].tags.map(tag => (
+                  <span key={tag} style={styles.detailTag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <p style={styles.detailDesc}>
+              "{THALI_DATA[selectedState].desc}"
+            </p>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <button onClick={handleBackToMap} style={styles.cancelBtn}>
+                Back to Map
+              </button>
+              <button onClick={handleHungryClick} style={styles.actionBtn}>
+                <ChefHat size={16} />
+                Feeling Hungry? Cook!
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Normal View - Search, Info Box and List of States */
           <>
             {/* Search Bar */}
             <div style={styles.searchBar}>
@@ -218,111 +390,12 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   if (e.target.value) {
-                    setActiveZone(null); // Clear active zone when typing to show direct search matches
+                    setActiveZone(null); // Clear active zone when typing
                   }
                 }}
                 style={styles.searchInput}
               />
             </div>
-
-            {/* Constellation Canvas Map View */}
-            {!searchQuery && (
-              <div style={styles.mapCanvas}>
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  position: 'relative',
-                  transition: 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                  transformOrigin: 'center center',
-                  transform: activeZone 
-                    ? `scale(${ZONE_ZOOMS[activeZone].scale}) translate(${ZONE_ZOOMS[activeZone].x}%, ${ZONE_ZOOMS[activeZone].y}%)`
-                    : 'scale(1) translate(0, 0)'
-                }}>
-                  {/* Stylized background outline map of India */}
-                  <svg viewBox="0 0 100 100" style={styles.indiaSilhouette}>
-                    <polygon 
-                      points="45,5 50,8 50,15 54,20 62,28 70,27 74,28 90,24 92,34 88,42 78,42 72,46 64,55 56,68 50,84 47,92 42,82 36,70 32,62 30,56 14,46 12,40 22,30 30,20 38,12" 
-                      style={{ 
-                        fill: 'rgba(232, 105, 42, 0.08)', 
-                        stroke: 'rgba(232, 105, 42, 0.35)', 
-                        strokeWidth: '0.6',
-                        strokeDasharray: '2, 1'
-                      }} 
-                    />
-                  </svg>
-
-                  {/* Visual grid constellation lines */}
-                  <svg style={styles.mapLinesSvg}>
-                    <line x1="42%" y1="15%" x2="16%" y2="48%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="42%" y1="15%" x2="48%" y2="47%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="42%" y1="15%" x2="84%" y2="32%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="16%" y1="48%" x2="48%" y2="47%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="48%" y1="47%" x2="72%" y2="48%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="72%" y1="48%" x2="84%" y2="32%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="16%" y1="48%" x2="44%" y2="78%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="48%" y1="47%" x2="44%" y2="78%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                    <line x1="72%" y1="48%" x2="44%" y2="78%" stroke="rgba(232, 105, 42, 0.2)" strokeWidth="1.5" />
-                  </svg>
-
-                  {/* 1. Default Mode: Render the 6 Zone Markers */}
-                  {!activeZone && Object.entries(ZONE_POSITIONS).map(([zoneName, pos]) => (
-                    <div 
-                      key={zoneName} 
-                      style={{ ...styles.zoneMarker, top: pos.top, left: pos.left }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveZone(zoneName);
-                      }}
-                    >
-                      <div className="pulse-effect" style={styles.pulsePin} />
-                      <span style={styles.zonePinLabel}>{zoneName.split(' ')[0]}</span>
-                    </div>
-                  ))}
-
-                  {/* 2. Zoomed Mode: Render State Pins for the Active Zone */}
-                  {activeZone && ZONES[activeZone].map(stateName => {
-                    const pos = STATE_COORDINATES[stateName];
-                    if (!pos) return null;
-                    const activeScale = ZONE_ZOOMS[activeZone].scale;
-                    
-                    return (
-                      <div 
-                        key={stateName} 
-                        style={{ 
-                          ...styles.statePin, 
-                          top: pos.top, 
-                          left: pos.left,
-                          transform: `translate(-50%, -50%) scale(${1 / activeScale})`
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStateClick(stateName);
-                        }}
-                      >
-                        <div className="pulse-effect" style={{ ...styles.pulsePin, backgroundColor: '#E8692A' }} />
-                        <span style={styles.statePinLabel}>{stateName}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Overlay Floating controls */}
-                {activeZone && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveZone(null);
-                    }}
-                    style={styles.floatingZoomOutBtn}
-                  >
-                    🔍 Zoom Out
-                  </button>
-                )}
-                <span style={styles.mapHintText}>
-                  {activeZone ? "Tap a state pin to explore signature dishes" : "Tap any zone to zoom and view states"}
-                </span>
-              </div>
-            )}
 
             {/* Schematic Map Visual Info Box */}
             <div style={styles.infoBox}>
@@ -379,54 +452,6 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
               })}
             </div>
           </>
-        ) : (
-          /* Zoomed Interactive Detail Drawer View */
-          <div style={styles.zoomContainer}>
-            {/* Custom Mockup Zoomed Map Node */}
-            <div style={styles.zoomedIconRing}>
-              <MapPin size={40} className="bounce-pin" style={{ color: 'var(--hc-saffron)' }} />
-              <div style={styles.zoomedBadge}>
-                {selectedState.toUpperCase()}
-              </div>
-            </div>
-
-            {/* Bottom Drawer Card */}
-            <div style={styles.detailCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <span style={styles.detailCardLabel}>
-                    {selectedState} SPECIALTY
-                  </span>
-                  <h3 style={styles.detailCardTitle}>
-                    {THALI_DATA[selectedState].dish}
-                  </h3>
-                </div>
-
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {THALI_DATA[selectedState].tags.map(tag => (
-                    <span key={tag} style={styles.detailTag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <p style={styles.detailDesc}>
-                "{THALI_DATA[selectedState].desc}"
-              </p>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button onClick={handleBackToMap} style={styles.cancelBtn}>
-                  Back to Map
-                </button>
-                <button onClick={handleHungryClick} style={styles.actionBtn}>
-                  <ChefHat size={16} />
-                  Feeling Hungry? Cook!
-                </button>
-              </div>
-            </div>
-          </div>
         )}
       </div>
     </div>

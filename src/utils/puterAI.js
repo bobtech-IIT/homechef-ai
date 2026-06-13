@@ -96,7 +96,10 @@ const callPuterAPI = async (prompt, systemInstruction, model, attempt = 1) => {
     
     let token = null;
     if (typeof window !== "undefined") {
-      token = localStorage.getItem("puter.auth.token.v2") || 
+      token = localStorage.getItem("puter.auth.token") || 
+              localStorage.getItem("puter.auth.token.v2") || 
+              localStorage.getItem("puter-auth-token") ||
+              localStorage.getItem("puter.authToken") ||
               (window.puter && window.puter.authToken);
     }
 
