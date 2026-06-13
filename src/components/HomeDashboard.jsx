@@ -63,41 +63,39 @@ const renderMoodText = (text) => {
 export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const { state } = useApp();
   const { profile = {}, weeklyPlan = {}, nutritionScore = {}, inventory = [] } = state;
-  const [greeting, setGreeting] = useState('Namaste! 👋');
-  const [greetingSub, setGreetingSub] = useState('Ready to cook something swadisht?');
+  const [greeting, setGreeting] = useState('Namaste');
+  const [greetingSub, setGreetingSub] = useState('What will you cook today?');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [moodResponse, setMoodResponse] = useState('');
   const [isMoodLoading, setIsMoodLoading] = useState(false);
 
   // Prominent, always-visible Family + Archetype Badge (the "VC sees this and gets it" detail)
-  const familyBadge = profile.familyName 
-    ? `${profile.familyName} Family` 
-    : 'Your Family';
-  const palateBadge = profile.regionalPalate ? profile.regionalPalate : 'Pan-Indian';
-  const dietBadge = profile.dietType || 'Vegetarian 🌱';
+  const familyName = profile.familyName || 'Sharma Family Kolkata Non-Veg';
+  const palateBadge = profile.regionalPalate ? profile.regionalPalate : 'Kolkata';
+  const dietBadge = profile.dietType || 'Non-Veg';
   const archetypeBadge = profile.culinaryArchetype === 'biohacker' 
-    ? '🌿 Bio-Hacker (European VC\'s Wife mode)' 
+    ? "European VC's Wife (Bio-Hacker)" 
     : profile.culinaryArchetype === 'cognitive' 
-      ? '🔥 Cognitive Hustler (Shark Tank Judge mode)' 
-      : '🏠 Standard Household (Nani\'s classic)';
+      ? 'Shark Tank Judge (Cognitive Hustler)' 
+      : 'Classic';
 
-  const fullProfileLine = `${familyBadge} • ${palateBadge} • ${dietBadge} • ${archetypeBadge}`;
+  const fullProfileLine = `${familyName} • ${archetypeBadge}`;
 
   // Time-aware greeting setup
   useEffect(() => {
     const hr = new Date().getHours();
     if (hr >= 5 && hr < 12) {
-      setGreeting('Subah ho gayi! ☀️');
-      setGreetingSub('Chalo, banate hain ek swadisht and healthy breakfast!');
+      setGreeting('Good morning');
+      setGreetingSub('What will you cook today?');
     } else if (hr >= 12 && hr < 17) {
-      setGreeting('Dopahar ka time! 🌤️');
-      setGreetingSub('Time for a traditional, satisfying lunch thali!');
+      setGreeting('Midday');
+      setGreetingSub('Time for something satisfying.');
     } else if (hr >= 17 && hr < 20) {
-      setGreeting('Sham ki Chai! ☕');
-      setGreetingSub('Kuch halka-fulka aur chatpata nashta ho jaye?');
+      setGreeting('Evening');
+      setGreetingSub('A quick bite or a proper thali?');
     } else {
-      setGreeting('Shubh Ratri! 🌙');
-      setGreetingSub('Chalo, din ka ant karein ek swadisht light dinner se.');
+      setGreeting('Night');
+      setGreetingSub('Wind down with something warm.');
     }
   }, []);
 
@@ -177,15 +175,13 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
       {/* 1. Header time-aware greeting */}
       <div style={styles.greetingHeader}>
         <div style={styles.headerInfo}>
-          <span style={styles.familyTag} className="text-micro">FAMILY ACCOUNT</span>
-          <h1 className="text-serif" style={styles.familyName}>{profile?.familyName ? `${profile.familyName} Family` : 'Ghar Ki Rasoi'}</h1>
+          <span style={styles.familyTag} className="text-micro">FAMILY</span>
+          <h1 className="text-serif" style={styles.familyName}>{profile?.familyName ? `${profile.familyName} Family` : 'Sharma Family Kolkata Non-Veg'}</h1>
           <span style={styles.profileBadge}>
-            {(profile?.regionalPalate || 'general').toUpperCase()} • {profile?.dietType || 'Vegetarian 🌱'} 
-            {profile?.culinaryArchetype ? ` • ${profile.culinaryArchetype === 'biohacker' ? '🌿 BIO-HACKER' : profile.culinaryArchetype === 'cognitive' ? '🔥 COGNITIVE' : '🏠 CLASSIC'}` : ''}
+            {archetypeBadge}
           </span>
-          {/* Subtle but powerful engineering signal for anyone paying attention (VCs included) */}
           <div style={{ fontSize: '9px', opacity: 0.55, marginTop: '2px' }}>
-            Offline RAG + Archetype Engine active — every suggestion is retrieved for *your* exact palate & persona
+            Offline RAG + Archetype Engine — every idea transformed for your palate
           </div>
         </div>
       </div>
@@ -197,13 +193,13 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
 
       {/* 2. Recipe of the Day Hero */}
       <div style={styles.sectionHeader}>
-        <h3 className="text-serif" style={styles.sectionTitle}>Aaj Ki Special Recipe</h3>
-        <span style={styles.sectionBadge}>Nani's Recommendation</span>
+        <h3 className="text-serif" style={styles.sectionTitle}>Nani's Pick</h3>
+        <span style={styles.sectionBadge}>Daily</span>
       </div>
 
       <div style={styles.heroCard} className="glass-card" onClick={() => setSelectedRecipe(recipeOfDay)}>
         <div style={styles.heroOverlay}>
-          <span style={styles.heroTag}>RECIPE OF THE DAY</span>
+          <span style={styles.heroTag}>TODAY</span>
           <h2 className="text-serif" style={styles.heroRecipeName}>{recipeOfDay.name}</h2>
           <p style={styles.heroRecipeDesc}>{recipeOfDay.description}</p>
           <div style={styles.heroStatsRow}>
@@ -214,27 +210,26 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
         </div>
       </div>
 
-      {/* Great Indian Thali Map Banner Card - Prominent launcher (Slice 2) */}
+      {/* Thali Map Banner - Launch to explore and cook */}
       <div style={styles.thaliBanner} className="glass-card animate-pop" onClick={onOpenThaliMap}>
         <div style={styles.thaliBannerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '26px' }}>🗺️</span>
-            <span style={styles.thaliTag}>INTERACTIVE VIRTUAL FEAST • SVG + PINS</span>
+            <span style={styles.thaliTag}>36 STATES • RAG POWERED</span>
           </div>
-          <h3 className="text-serif" style={styles.thaliTitle}>Explore the Great Indian Thali</h3>
+          <h3 className="text-serif" style={styles.thaliTitle}>Open the Thali Map</h3>
           <p style={styles.thaliDesc}>
-            Tap zones for pulsing state pins (all 36). See Haryana Bajre ki Khichdi &amp; more. Zoom, search, then Cook!
+            Discover regional signatures. Tap a state, transform with your archetype.
           </p>
           <div style={styles.thaliCTA}>
-            <span>🗺️ 6 Zones • Pulsing Pins • 36 States →</span>
+            <span>Map →</span>
           </div>
         </div>
       </div>
 
-      {/* 3. Mood Wheel (Innovation 1) */}
+      {/* 3. Mood */}
       <div style={styles.sectionHeader}>
-        <h3 className="text-serif" style={styles.sectionTitle}>Mood Ke Anusar Khaana</h3>
-        <p style={styles.sectionSub}>Tap your mood and let Nani suggest what to cook</p>
+        <h3 className="text-serif" style={styles.sectionTitle}>How do you feel?</h3>
+        <p style={styles.sectionSub}>Nani transforms a suggestion for your mood</p>
       </div>
 
       <div style={styles.moodWheelContainer} className="glass-card">
@@ -260,23 +255,23 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
         {isMoodLoading && (
           <div style={styles.moodLoading}>
             <div className="shimmer" style={styles.loadingBar}></div>
-            <p>Nani is thinking...</p>
+            <p>Thinking...</p>
           </div>
         )}
 
         {moodResponse && (
           <div style={styles.moodResponse} className="animate-pop">
-            <span style={styles.naniQuote}>👵 NANI SAYS:</span>
+            <span style={styles.naniQuote}>NANI</span>
             <div style={styles.moodText}>{renderMoodText(moodResponse)}</div>
-            <button style={styles.closeMoodBtn} onClick={() => setMoodResponse('')}>Dhanyawad Nani! 🙏</button>
+            <button style={styles.closeMoodBtn} onClick={() => setMoodResponse('')}>Close</button>
           </div>
         )}
       </div>
 
       {/* 4. Today's Meals Timeline */}
       <div style={styles.sectionHeader}>
-        <h3 className="text-serif" style={styles.sectionTitle}>Aaj Ka Menu</h3>
-        <button style={styles.viewAllBtn} onClick={() => onNavigateToTab(1)}>Edit Week Planner →</button>
+        <h3 className="text-serif" style={styles.sectionTitle}>Today</h3>
+        <button style={styles.viewAllBtn} onClick={() => onNavigateToTab(1)}>Edit</button>
       </div>
 
       <div style={styles.timeline}>
@@ -303,10 +298,10 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
         })}
       </div>
 
-      {/* 5. Nutrition Fingerprint (Innovation 5) */}
+      {/* 5. Nutrition */}
       <div style={styles.sectionHeader}>
-        <h3 className="text-serif" style={styles.sectionTitle}>Weekly Nutrition</h3>
-        <span style={styles.sectionBadge}>Healthy Kitchen</span>
+        <h3 className="text-serif" style={styles.sectionTitle}>Health</h3>
+        <span style={styles.sectionBadge}>Weekly</span>
       </div>
 
       <div style={styles.nutritionCard} className="glass-card">
@@ -354,7 +349,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
               </ol>
             </div>
 
-            <button style={styles.closeModalBtn} onClick={() => setSelectedRecipe(null)}>Close Cooking Panel</button>
+            <button style={styles.closeModalBtn} onClick={() => setSelectedRecipe(null)}>Done</button>
           </div>
         </div>
       )}

@@ -13,10 +13,50 @@ const AI_CACHE_KEY = 'homechef_ai_cache_v2';
 const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000; // 24 Hours
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
+const REQUEST_TIMEOUT_MS = 14000; // Hard timeout for REST calls (harden vs hanging)
 
 // Request Queue to prevent concurrent spam rate limits
 let isProcessingQueue = false;
 const requestQueue = [];
+
+// --- Visible AI Health Status (for UI indicators + "no AI connected" transparency) ---
+let lastAIStatus = {
+  status: 'unknown', // 'connected' | 'cached' | 'offline-kb' | 'error' | 'cleared'
+  lastMessage: 'Initializing...',
+  timestamp: null,
+  cacheClearedAt: null
+};
+
+const updateAIStatus = (patch) => {
+  lastAIStatus = { ...lastAIStatus, ...patch, timestamp: Date.now() };
+  console.log('📡 PuterAI Status update:', lastAIStatus.status, lastAIStatus.lastMessage);
+};
+
+export const getAIStatus = () => ({ ...lastAIStatus });
+
+export const clearAICache = () => {
+  try {
+    localStorage.removeItem(AI_CACHE_KEY);
+    updateAIStatus({ 
+      status: 'cleared', 
+      lastMessage: 'Cache cleared (homechef_ai_cache_v2) — next message forces fresh Puter REST attempt + retry.' 
+    });
+    console.log('🧹 PuterAI: homechef_ai_cache_v2 cleared. Will retry real AI on next queryAI call.');
+    return true;
+  } catch (e) {
+    console.warn('PuterAI clear cache failed:', e);
+    return false;
+  }
+};
+
+// Helper to extract archetype from injected systemInstruction (so fallbacks can still be archetype-aware)
+const getArchetypeFromSystem = (sys = '') => {
+  if (!sys) return 'standard';
+  const s = sys.toLowerCase();
+  if (s.includes('biohacker') || s.includes('bio-hacker')) return 'biohacker';
+  if (s.includes('cognitive') || s.includes('cognitive hustler')) return 'cognitive';
+  return 'standard';
+};
 
 /**
  * Helper: Generate unique hash key for caching
@@ -45,6 +85,7 @@ const getCachedResponse = (key) => {
     
     if (cachedItem && (Date.now() - cachedItem.timestamp < MAX_CACHE_AGE_MS)) {
       console.log('⚡ PuterAI Cache Hit:', key);
+      updateAIStatus({ status: 'cached', lastMessage: 'Served from 24h local cache (no network)' });
       return cachedItem.response;
     }
     
@@ -90,6 +131,11 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * Puter API Caller with Retries
  */
 const callPuterAPI = async (prompt, systemInstruction, model, attempt = 1) => {
+  // Script / env guard (harden "no AI connected" silent fails — direct REST only works in browser with fetch)
+  if (typeof window === 'undefined' || typeof fetch === 'undefined') {
+    throw new Error('puter_rest_not_available_in_this_env (browser fetch required)');
+  }
+
   try {
     const selectedModel = model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini';
     console.log(`🤖 PuterAI calling REST ${selectedModel} (Attempt ${attempt}/${MAX_RETRIES})...`);
@@ -111,9 +157,14 @@ const callPuterAPI = async (prompt, systemInstruction, model, attempt = 1) => {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
+    // Timeout guard + abort (prevents silent hangs, visible error -> rich KB)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
       method: "POST",
       headers,
+      signal: controller.signal,
       body: JSON.stringify({
         model: selectedModel,
         messages: [
@@ -121,8 +172,11 @@ const callPuterAPI = async (prompt, systemInstruction, model, attempt = 1) => {
           { role: "user", content: prompt }
         ],
         temperature: 0.2,
+        max_tokens: 900,
       }),
     });
+
+    clearTimeout(timeoutId);
 
     if (response.status === 402 || response.status === 401) {
       throw new Error(`puter_auth_or_funds_error_status_${response.status}`);
@@ -135,7 +189,9 @@ const callPuterAPI = async (prompt, systemInstruction, model, attempt = 1) => {
 
     const data = await response.json();
     if (data && data.choices && data.choices[0] && data.choices[0].message) {
-      return data.choices[0].message.content;
+      const content = data.choices[0].message.content;
+      updateAIStatus({ status: 'connected', lastMessage: `Live Puter REST success (${selectedModel})` });
+      return content;
     }
     throw new Error("Invalid response format from Puter AI REST API");
   } catch (err) {
@@ -189,17 +245,23 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
     // 2. Queue the request
     requestQueue.push({
       resolve: (val) => {
-        // Save to cache on successful resolution
+        // Save to cache on successful resolution (if not already from cache layer)
         setCachedResponse(cacheKey, val);
+        // If we reached here via real path, ensure connected status (fallback paths already set their status)
+        if (!lastAIStatus.status || lastAIStatus.status === 'unknown' || lastAIStatus.status === 'cleared') {
+          updateAIStatus({ status: 'connected', lastMessage: 'Fresh AI response cached' });
+        }
         resolve(val);
       },
       reject: async (err) => {
         console.warn('❌ PuterAI request failed in queue. Falling back to local KB.', err);
-        // 3. Layer 5: Offline/KnowledgeBase Fallback
+        // 3. Layer 5: Offline/KnowledgeBase Fallback — now archetype-aware even on total offline
         try {
+          const arch = getArchetypeFromSystem(systemInstruction);
+          updateAIStatus({ status: 'offline-kb', lastMessage: `Using rich local KB fallback (archetype: ${arch})` });
           const fallback = prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu')
-            ? getLocalFallbackRecipe(prompt)
-            : getLocalFallbackChat(prompt);
+            ? getLocalFallbackRecipe(prompt, arch)
+            : getLocalFallbackChat(prompt, arch);
           resolve(fallback);
         } catch (fallbackErr) {
           reject(fallbackErr);

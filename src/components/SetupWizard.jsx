@@ -82,30 +82,30 @@ export default function SetupWizard() {
       <div style={styles.card} className="glass-card animate-slide-up">
         {step === 1 && (
           <div>
-            <span style={styles.stepNum}>STEP 1 OF 5</span>
-            <h2 className="text-serif" style={styles.title}>Your Kitchen Identity</h2>
-            <p style={styles.desc}>Let's personalize your HomeChef experience. What is your family's surname?</p>
+            <span style={styles.stepNum}>1 / 5</span>
+            <h2 className="text-serif" style={styles.title}>Your Family</h2>
+            <p style={styles.desc}>Set your profile. Example: Sharma Family Kolkata Non-Veg.</p>
             <input
               type="text"
-              placeholder="e.g. Sharma, Patel, Banerjee"
+              placeholder="Sharma Family Kolkata Non-Veg"
               style={styles.input}
               value={formData.familyName}
               onChange={e => setFormData({ ...formData, familyName: e.target.value })}
             />
             
-            <p style={styles.label}>Family Size</p>
+            <p style={styles.label}>Size</p>
             <div style={styles.grid}>
-              {['1-2 Members 🍳', '3-4 Members 👨‍👩‍👧‍👦', '5+ Members 🍲'].map(opt => (
+              {['1-2', '3-4', '5+'].map(opt => (
                 <button
                   key={opt}
                   style={{
                     ...styles.gridBtn,
-                    borderColor: formData.familySize === opt ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
-                    background: formData.familySize === opt ? '#FEF3DC' : '#fff'
+                    borderColor: formData.familySize.includes(opt) ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
+                    background: formData.familySize.includes(opt) ? '#FEF3DC' : '#fff'
                   }}
-                  onClick={() => setFormData({ ...formData, familySize: opt })}
+                  onClick={() => setFormData({ ...formData, familySize: `${opt} Members` })}
                 >
-                  {opt}
+                  {opt} Members
                 </button>
               ))}
             </div>
@@ -114,20 +114,19 @@ export default function SetupWizard() {
 
         {step === 2 && (
           <div>
-            <span style={styles.stepNum}>STEP 2 OF 5</span>
-            <h2 className="text-serif" style={styles.title}>Select Regional Palate</h2>
-            <p style={styles.desc}>This aligns the automatic meal seeder with your regional tastes.</p>
+            <span style={styles.stepNum}>2 / 5</span>
+            <h2 className="text-serif" style={styles.title}>Regional Palate</h2>
+            <p style={styles.desc}>Locks recipes and RAG to your tastes.</p>
             <div style={styles.verticalList}>
               {[
-                { id: 'general', name: 'General Indian Classic 🍲' },
-                { id: 'punjab', name: 'Punjabi Dhaba Style 🌾' },
-                { id: 'gujarat', name: 'Gujarati Kathiyawadi 🫓' },
-                { id: 'maharashtra', name: 'Maharashtrian Thali 🍛' },
-                { id: 'bangladesh', name: 'Bangladeshi (East Bengal Cuisines) 🇧🇩🍗' },
-                { id: 'kolkata', name: 'Kolkata (West Bengal Cuisines) 🐟🌾' },
-                { id: 'odisha', name: 'Odisha Oriya Heirloom (Orissa) 🦐🌾' },
-                { id: 'tamilnadu', name: 'Tamil Nadu Kalyana Feast 🥥' },
-                { id: 'kerala', name: 'Kerala Nadan Malabar 🌴' }
+                { id: 'general', name: 'General Indian' },
+                { id: 'punjab', name: 'Punjabi' },
+                { id: 'gujarat', name: 'Gujarati' },
+                { id: 'maharashtra', name: 'Maharashtrian' },
+                { id: 'kolkata', name: 'Kolkata' },
+                { id: 'odisha', name: 'Odisha' },
+                { id: 'tamilnadu', name: 'Tamil Nadu' },
+                { id: 'kerala', name: 'Kerala' }
               ].map(opt => (
                 <button
                   key={opt.id}
@@ -147,12 +146,13 @@ export default function SetupWizard() {
 
         {step === 3 && (
           <div>
-            <span style={styles.stepNum}>STEP 3 OF 5</span>
-            <h2 className="text-serif" style={styles.title}>Dietary Preference</h2>
-            <p style={styles.desc}>Custom meal filter locks will be automatically established.</p>
+            <span style={styles.stepNum}>3 / 5</span>
+            <h2 className="text-serif" style={styles.title}>Diet</h2>
+            <p style={styles.desc}>RAG and suggestions respect this strictly.</p>
             <div style={styles.verticalList}>
-              {['Vegetarian 🌱', 'Non-Vegetarian 🍗', 'Jain (No Onion/Garlic) 🧅❌', 'Vegan 🌱'].map(opt => {
-                const isLocked = formData.regionalPalate === 'gujarat' && opt !== 'Vegetarian 🌱' && opt !== 'Vegan 🌱';
+              {['Vegetarian', 'Non-Vegetarian', 'Jain', 'Vegan'].map(opt => {
+                const isLocked = formData.regionalPalate === 'gujarat' && opt !== 'Vegetarian' && opt !== 'Vegan';
+                const full = opt === 'Vegetarian' ? 'Vegetarian' : opt === 'Non-Vegetarian' ? 'Non-Vegetarian' : opt === 'Jain' ? 'Jain (No Onion/Garlic)' : 'Vegan';
                 return (
                   <button
                     key={opt}
@@ -160,13 +160,13 @@ export default function SetupWizard() {
                     style={{
                       ...styles.listBtn,
                       opacity: isLocked ? 0.45 : 1,
-                      borderColor: formData.dietType === opt ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
-                      background: formData.dietType === opt ? '#FEF3DC' : '#fff',
+                      borderColor: formData.dietType === full ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
+                      background: formData.dietType === full ? '#FEF3DC' : '#fff',
                       cursor: isLocked ? 'not-allowed' : 'pointer'
                     }}
-                    onClick={() => !isLocked && setFormData({ ...formData, dietType: opt })}
+                    onClick={() => !isLocked && setFormData({ ...formData, dietType: full })}
                   >
-                    {opt} {isLocked && '🔒 (Gujarati Diet Locked)'}
+                    {full} {isLocked && '(Locked)'}
                   </button>
                 );
               })}
@@ -176,14 +176,14 @@ export default function SetupWizard() {
 
         {step === 4 && (
           <div>
-            <span style={styles.stepNum}>STEP 4 OF 5</span>
+            <span style={styles.stepNum}>4 / 5</span>
             <h2 className="text-serif" style={styles.title}>Culinary Archetype</h2>
-            <p style={styles.desc}>Select an archetype to dynamically transform all ingredients, spice levels, and presentation aesthetics.</p>
+            <p style={styles.desc}>Transforms every recipe via RAG + persona. Your superpower.</p>
             <div style={styles.verticalList}>
               {[
-                { id: 'standard', name: 'Standard Household Mode 🏠', desc: 'Standard regional recipe preparation.' },
-                { id: 'biohacker', name: 'European VC\'s Wife (Bio-Hacker) 🌿', desc: 'Low glycemic, adaptogenic, extra virgin oils, zen plating.' },
-                { id: 'cognitive', name: 'Shark Tank Judge (Cognitive Hustler) 🔥', desc: 'Ragi/quinoa base, high protein, Brahmi ghee, dramatic plating.' }
+                { id: 'standard', name: 'Classic', desc: 'Timeless regional home cooking.' },
+                { id: 'biohacker', name: "European VC's Wife (Bio-Hacker)", desc: 'Low glycemic. Clean. Zen.' },
+                { id: 'cognitive', name: 'Shark Tank Judge (Cognitive Hustler)', desc: 'High protein. Brain fuel. Bold.' }
               ].map(opt => (
                 <button
                   key={opt.id}
@@ -204,10 +204,10 @@ export default function SetupWizard() {
 
         {step === 5 && (
           <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
-            <span style={styles.stepNum}>STEP 5 OF 5</span>
-            <h2 className="text-serif" style={styles.title}>Preferences & Interests</h2>
+            <span style={styles.stepNum}>5 / 5</span>
+            <h2 className="text-serif" style={styles.title}>Interests</h2>
             
-            <p style={styles.label}>Cuisine Interests</p>
+            <p style={styles.label}>Cuisines</p>
             <div style={styles.tagCloud}>
               {CUISINES.map(c => {
                 const isSelected = formData.cuisineInterests.includes(c);
@@ -228,7 +228,7 @@ export default function SetupWizard() {
               })}
             </div>
 
-            <p style={{ ...styles.label, marginTop: '20px' }}>Allergens to Flag</p>
+            <p style={{ ...styles.label, marginTop: '20px' }}>Allergens</p>
             <div style={styles.tagCloud}>
               {ALLERGENS.map(alg => {
                 const isSelected = formData.occasions.includes(alg);
@@ -256,7 +256,7 @@ export default function SetupWizard() {
           <div style={styles.btnRow}>
             {step > 1 && (
               <button style={styles.secondaryBtn} onClick={handleBack}>
-                Pichhla Kadam
+                Back
               </button>
             )}
             <button
@@ -266,7 +266,7 @@ export default function SetupWizard() {
               }}
               onClick={handleNext}
             >
-              {step === 5 ? 'Shuru Karein! 🚀' : 'Agla Kadam →'}
+              {step === 5 ? 'Start' : 'Next'}
             </button>
           </div>
         )}

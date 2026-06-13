@@ -82,7 +82,7 @@ export default function GrandmotherVault() {
           }}
           onClick={() => setSubTab('vault')}
         >
-          📜 Heirloom Vault
+          Vault
         </button>
         <button
           style={{
@@ -93,7 +93,7 @@ export default function GrandmotherVault() {
           }}
           onClick={() => setSubTab('nuskhe')}
         >
-          🍵 Nani's Nuskhe
+          Nuskhe
         </button>
         <button
           style={{
@@ -104,7 +104,7 @@ export default function GrandmotherVault() {
           }}
           onClick={() => setSubTab('planner')}
         >
-          📅 7-Day Planner
+          Planner
         </button>
       </div>
 
@@ -114,9 +114,9 @@ export default function GrandmotherVault() {
         <div>
           {/* Sepia-Style Vintage Header */}
           <div style={styles.header}>
-            <span style={styles.vintageTag}>👵 NANI KI DASTARKHWAN</span>
-            <h1 className="text-serif" style={styles.title}>Grandmother's Vault</h1>
-            <p style={styles.subtitle}>Preserving heirloom recipes passed down through generations</p>
+            <span style={styles.vintageTag}>HEIRLOOM</span>
+            <h1 className="text-serif" style={styles.title}>Vault</h1>
+            <p style={styles.subtitle}>Timeless recipes. Archetype-ready.</p>
           </div>
 
           {/* Horizontal Region Selector */}
@@ -156,7 +156,7 @@ export default function GrandmotherVault() {
                 
                 <div style={styles.recipeFooter}>
                   <span>⏱ {recipe.cookTime}</span>
-                  <span style={styles.viewLink}>Read Full Story & Cook →</span>
+                  <span style={styles.viewLink}>View →</span>
                 </div>
               </div>
             ))}
@@ -168,9 +168,9 @@ export default function GrandmotherVault() {
         <div>
           {/* Sepia-Style Vintage Header */}
           <div style={styles.header}>
-            <span style={styles.vintageTag}>🍵 100% HOME REMEDIES & COOLERS</span>
+            <span style={styles.vintageTag}>NUSKHE</span>
             <h1 className="text-serif" style={styles.title}>Nani's Nuskhe</h1>
-            <p style={styles.subtitle}>Traditional health drinks, detox juices, and cooling remedies prepared in a mixer or NutriBullet</p>
+            <p style={styles.subtitle}>Health drinks. RAG + archetype aware.</p>
           </div>
 
           {/* 🔍 Symptom Search Box & Key Dictionary Lookup */}
@@ -264,7 +264,7 @@ export default function GrandmotherVault() {
                   
                   <div style={styles.recipeFooter}>
                     <span>⚡ Prep: {drink.equipment}</span>
-                    <span style={styles.viewLink}>View Recipe & Tips →</span>
+                    <span style={styles.viewLink}>View →</span>
                   </div>
                 </div>
               ))}
@@ -373,7 +373,7 @@ export default function GrandmotherVault() {
               setActiveRecipe(null);
               setShowAssignDropdown(false);
             }}>
-              Fold & Keep in Drawer
+              Close
             </button>
           </div>
         </div>
@@ -392,7 +392,7 @@ export default function GrandmotherVault() {
             <div style={styles.assignSection}>
               {!showAssignDropdown ? (
                 <button style={styles.assignTriggerBtn} onClick={() => setShowAssignDropdown(true)}>
-                  📅 Assign this to your 7-Day Meal Plan / Routine
+                  Add to Planner
                 </button>
               ) : (
                 <div style={styles.assignForm} className="glass-panel">
@@ -464,7 +464,7 @@ export default function GrandmotherVault() {
               setActiveNuskhe(null);
               setShowAssignDropdown(false);
             }}>
-              Keep Journal Back in Chest
+              Close
             </button>
           </div>
         </div>

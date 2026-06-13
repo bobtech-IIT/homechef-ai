@@ -108,7 +108,7 @@ export default function AIChatPlanner() {
       else if (s.status === 'offline-kb') base = `AI: Offline KB Active (rich fallback)`;
       else if (s.status === 'cleared') base = `AI: Cache cleared — retry next msg`;
       const arch = profile.culinaryArchetype || 'standard';
-      setAiStatusLabel(`${base} | Archetype: ${arch}`);
+      setAiStatusLabel(`${base} • ${arch}`);
     } catch (e) {
       setAiStatusLabel('AI: Status check failed (KB ready)');
     }
@@ -202,23 +202,18 @@ export default function AIChatPlanner() {
       : '';
     if (archetype === 'biohacker') {
       archetypeInstruction = `
-      [CULINARY ARCHETYPE: European VC's Wife (Bio-Hacker) 🌿]
-      - You MUST transform all ingredients and methods to be Low Glycemic and Clean Eating.
-      - Recommend adaptogenic additions (e.g. Ashwagandha, Turmeric, Ginger, Holy Basil/Tulsi).
-      - Replace standard cooking oils with extra virgin cold-pressed oils (olive, avocado, or virgin coconut oil). No refined sugar, refined flour, or heavy dairy.
-      - Describe the final plating aesthetics as: 'Zen Plating' — minimalist, neat, elegant, natural colors, clean geometry, and high-frequency presentation.`;
+      [CULINARY ARCHETYPE: European VC's Wife (Bio-Hacker)]
+      - Low glycemic. Clean. Adaptogenic.
+      - Zen plating only.`;
     } else if (archetype === 'cognitive') {
       archetypeInstruction = `
-      [CULINARY ARCHETYPE: Shark Tank Judge (Cognitive Hustler) 🔥]
-      - You MUST prioritize cognitive enhancement, high protein, and brain stamina.
-      - Incorporate ragi, quinoa, oats, hemp seeds, or ancient grain bases.
-      - Recommend brain-boosting ingredients like Brahmi Ghee, walnut garnishes, flaxseeds, and MCT fats.
-      - Describe the final plating aesthetics as: 'Dramatic Plating' — bold, high-contrast colors, theatrical garnishes, energetic, modern, and striking presentation.`;
+      [CULINARY ARCHETYPE: Shark Tank Judge (Cognitive Hustler)]
+      - High protein. Brain fuel.
+      - Dramatic plating.`;
     } else {
       archetypeInstruction = `
-      [CULINARY ARCHETYPE: Standard Household Mode 🏠]
-      - Suggest standard regional recipe preparations.
-      - Use classic home-cooked ingredients, standard home-style spice levels, and comforting, simple, traditional family-style plating.`;
+      [CULINARY ARCHETYPE: Classic]
+      - Timeless regional home cooking.`;
     }
 
     const systemInstruction = `You are a warm, traditional, caring Indian grandmother (Nani) named 'HomeChef AI Rasoi Saathi'. 
@@ -274,7 +269,7 @@ export default function AIChatPlanner() {
 
   const handleDownloadChat = () => {
     if (chatHistory.length === 0) {
-      alert("Aapka chat khali hai beta! Kuch poochiye pehle.");
+      alert("Ask something first.");
       return;
     }
 
@@ -421,24 +416,23 @@ export default function AIChatPlanner() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={styles.avatar}>👵</span>
               <div style={styles.headerTitleContainer}>
-                <h3 style={styles.headerTitle}>Nani's AI Rasoi Saathi</h3>
+                <h3 style={styles.headerTitle}>Ask Nani</h3>
                 <div style={{ fontSize: '10px', color: '#7A5540', marginTop: '2px', lineHeight: '1.3' }}>
                   {aiStatusLabel} 
                   <button 
                     onClick={() => {
                       const ok = clearAICache();
                       refreshAIStatusLabel();
-                      setToastMessage(ok ? '🧹 AI Cache cleared — next message forces fresh Puter attempt!' : 'Cache clear attempted (see console)');
+                      setToastMessage(ok ? 'Cache cleared' : 'Done');
                       setTimeout(() => setToastMessage(''), 2800);
                     }}
                     style={{ marginLeft: '8px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: 'transparent', color: '#E8692A', borderRadius: '4px', cursor: 'pointer' }}
-                    title="Clears homechef_ai_cache_v2 + next Nani message retries real REST (not cached fallback)"
                   >
-                    Force Reconnect / Clear AI Cache
+                    Clear
                   </button>
                 </div>
                 <span style={styles.statusLabel}>
-                  {navigator.onLine ? '● Capable of live Puter' : '● Pure local KB (offline sim)'} • Archetype from profile injected always
+                  {navigator.onLine ? 'Live RAG' : 'Offline RAG'} • Archetype active
                 </span>
               </div>
             </div>
@@ -446,9 +440,9 @@ export default function AIChatPlanner() {
               <button 
                 onClick={handleDownloadChat}
                 style={styles.downloadBtn}
-                title="Download Recipe Document"
+                title="Save"
               >
-                📥 Download Doc
+                Save
               </button>
             )}
           </div>
@@ -458,23 +452,22 @@ export default function AIChatPlanner() {
             {chatHistory.length === 0 && (
               <div style={styles.emptyState}>
                 <span style={styles.naniBigAvatar}>👵</span>
-                <h3 className="text-serif" style={styles.emptyTitle}>Namaste, Beta!</h3>
+                <h3 className="text-serif" style={styles.emptyTitle}>Ask Nani</h3>
                 <p style={styles.emptyDesc}>
-                  Aapke kitchen me aaj kaunsa samaan hai? Ya phir hafte ka menu plan karna chahte ho? 
-                  Mujhse bejhijhak poochiye! Main Hinglish me fully samajh sakti hoon.
+                  Your pantry, palate, and archetype power every answer. Offline RAG knows your Sharma Family.
                 </p>
                 <div style={styles.quickPrompts}>
                   <button 
                     style={styles.promptBtn} 
-                    onClick={() => handleSend("Aaj dinner me kya banaye? Suggest 2 simple North Indian items.")}
+                    onClick={() => handleSend("Suggest dinner for tonight.")}
                   >
-                    💡 "Aaj dinner me kya banaye?"
+                    Dinner ideas
                   </button>
                   <button 
                     style={styles.promptBtn} 
-                    onClick={() => handleSend("Mere paas Paneer aur Coriander hai. Quick lunch recipe batao.")}
+                    onClick={() => handleSend("Paneer and coriander quick lunch.")}
                   >
-                    💡 "Paneer aur Coriander se recipe"
+                    Use what I have
                   </button>
                 </div>
               </div>
@@ -533,7 +526,7 @@ export default function AIChatPlanner() {
                         style={styles.addToPlannerBtn}
                         onClick={() => setSelectedMsgIndex(isDrawerOpen ? null : index)}
                       >
-                        📅 Add to Weekly Planner Thali
+                        Add to Planner
                       </button>
                       
                       {isDrawerOpen && (
@@ -555,10 +548,10 @@ export default function AIChatPlanner() {
                               onChange={e => setSelectedMeal(e.target.value)}
                               style={styles.drawerSelect}
                             >
-                              <option value="breakfast">🍳 Breakfast</option>
-                              <option value="lunch">🍽️ Lunch</option>
-                              <option value="snack">☕ Snack</option>
-                              <option value="dinner">🌙 Dinner</option>
+                              <option value="breakfast">Breakfast</option>
+                              <option value="lunch">Lunch</option>
+                              <option value="snack">Snack</option>
+                              <option value="dinner">Dinner</option>
                             </select>
                           </div>
                           
@@ -573,7 +566,7 @@ export default function AIChatPlanner() {
                               style={styles.drawerSaveBtn}
                               onClick={() => handleLoadToPlanner(msg.text, index)}
                             >
-                              Save Thali 🎉
+                              Save
                             </button>
                           </div>
                         </div>
@@ -609,7 +602,7 @@ export default function AIChatPlanner() {
                 <span className="wave-bar bar-4"></span>
                 <span className="wave-bar bar-5"></span>
               </div>
-              <p style={styles.waveformText}>Nani is listening to your Hinglish voice... Speak now!</p>
+              <p style={styles.waveformText}>Listening...</p>
             </div>
           )}
 
@@ -622,20 +615,20 @@ export default function AIChatPlanner() {
                 color: isListening ? '#fff' : '#E8692A'
               }}
               onClick={handleVoiceListen}
-              title="Hands-free Voice Mode (Talk to Nani)"
+              title="Voice"
             >
               🎤
             </button>
             <input
               type="text"
-              placeholder={isListening ? "Main sun rahi hoon beta..." : "Kuch poochna hai? Type here..."}
+              placeholder={isListening ? "Listening..." : "Ask Nani..."}
               style={styles.chatInput}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
             />
             <button style={styles.sendBtn} onClick={() => handleSend()}>
-              ➔
+              →
             </button>
           </div>
         </>

@@ -167,6 +167,13 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
   return (
     <div style={styles.fullscreenOverlay}>
       <style>{`
+        /* DEFENSIVE: Force critical saffron/cream contrast vars even if index.css or theme fails to load */
+        :root, :host {
+          --hc-saffron: #E8692A !important;
+          --hc-saffron-dark: #C4501A !important;
+          --hc-turmeric: #F5A623 !important;
+          --hc-cream: #FDF8F2 !important;
+        }
         @keyframes pulsePin {
           0% {
             transform: scale(0.95);
@@ -186,10 +193,11 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
           50% { transform: translateY(-6px); }
         }
         .pulse-effect {
-          animation: pulsePin 2s infinite ease-in-out;
+          animation: pulsePin 2s infinite ease-in-out !important;
+          background-color: #E8692A !important;
         }
         .bounce-pin {
-          animation: bouncePin 1.5s infinite ease-in-out;
+          animation: bouncePin 1.5s infinite ease-in-out !important;
         }
         .animate-spin-slow {
           animation: spinMap 15s linear infinite;
@@ -197,18 +205,20 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
         @keyframes spinMap {
           100% { transform: rotate(360deg); }
         }
+        /* Force map elements visible + high saffron contrast on dark canvas (cream theme safe) */
+        .zone-pin-label, .state-pin-label { color: #fff !important; border-color: #E8692A !important; }
       `}</style>
 
       {/* Header */}
       <div style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Compass className="animate-spin-slow" size={24} style={{ color: 'var(--hc-saffron)' }} />
+          <Compass className="animate-spin-slow" size={24} style={{ color: '#E8692A' }} />
           <div>
             <h3 style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '0.5px', margin: 0 }}>
-              Great Indian Thali
+              Thali Map
             </h3>
             <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 700 }}>
-              36 STATES & UNION TERRITORIES EXPLORER
+              36 REGIONS • ARCHETYPE TRANSFORM
             </span>
           </div>
         </div>
@@ -268,7 +278,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                   setActiveZone(zoneName);
                 }}
               >
-                <div className="pulse-effect" style={styles.pulsePin} />
+                <div className="pulse-effect bounce-pin" style={styles.pulsePin} />
                 <span style={styles.zonePinLabel}>{zoneName.split(' ')[0]}</span>
               </div>
             ))}
@@ -293,7 +303,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                     handleStateClick(stateName);
                   }}
                 >
-                  <div className="pulse-effect" style={{ ...styles.pulsePin, backgroundColor: '#E8692A' }} />
+                  <div className="pulse-effect bounce-pin" style={{ ...styles.pulsePin, backgroundColor: '#E8692A' }} />
                   <span style={styles.statePinLabel}>{stateName}</span>
                 </div>
               );
@@ -309,7 +319,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                   transform: `translate(-50%, -50%) scale(0.45)` // Inverse of map scale 2.5
                 }}
               >
-                <div className="pulse-effect" style={{ ...styles.pulsePin, backgroundColor: '#E8692A', width: '18px', height: '18px' }} />
+                <div className="pulse-effect bounce-pin" style={{ ...styles.pulsePin, backgroundColor: '#E8692A', width: '18px', height: '18px' }} />
                 <span style={{ ...styles.statePinLabel, fontSize: '11px', padding: '3px 8px', borderColor: '#E8692A' }}>
                   📍 {selectedState}
                 </span>
@@ -330,12 +340,12 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
               }}
               style={styles.floatingZoomOutBtn}
             >
-              🔍 Zoom Out
+              Back to Map
             </button>
           )}
 
           <span style={styles.mapHintText}>
-            {selectedState ? `Zoomed in on ${selectedState}` : activeZone ? "Tap a state pin to explore signature dishes" : "Tap any zone to zoom and view states"}
+            {selectedState ? `On ${selectedState}` : activeZone ? "Tap state" : "Tap zone"}
           </span>
         </div>
 
@@ -369,11 +379,11 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
               <button onClick={handleBackToMap} style={styles.cancelBtn}>
-                Back to Map
+                Back
               </button>
               <button onClick={handleHungryClick} style={styles.actionBtn}>
                 <ChefHat size={16} />
-                Feeling Hungry? Cook!
+                Cook
               </button>
             </div>
           </div>
@@ -385,12 +395,12 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
               <Search size={16} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
               <input 
                 type="text"
-                placeholder="Search state, union territory, or dish..."
+                placeholder="Search state or dish..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   if (e.target.value) {
-                    setActiveZone(null); // Clear active zone when typing
+                    setActiveZone(null);
                   }
                 }}
                 style={styles.searchInput}
@@ -399,9 +409,9 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
 
             {/* Schematic Map Visual Info Box */}
             <div style={styles.infoBox}>
-              <Sparkles size={20} style={{ color: 'var(--hc-saffron)', flexShrink: 0 }} />
+              <Sparkles size={20} style={{ color: '#E8692A', flexShrink: 0 }} />
               <p style={{ fontSize: '12.5px', margin: 0, lineHeight: '18px', color: 'rgba(255, 255, 255, 0.85)' }}>
-                {activeZone ? `Viewing ${activeZone}. Tap any state card to load its recipe.` : "Explore signature dishes across India's 28 states and 8 union territories."}
+                {activeZone ? `Viewing ${activeZone}. Tap state.` : "Explore. Tap to transform with your archetype."}
               </p>
             </div>
 
@@ -420,7 +430,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                       </h4>
                       {activeZone && (
                         <button onClick={() => setActiveZone(null)} style={styles.backToMapLink}>
-                          ← Show All Regions
+                          All Regions
                         </button>
                       )}
                     </div>
@@ -437,7 +447,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                             style={styles.stateCard}
                           >
                             <span style={styles.stateCardName}>
-                              <MapPin size={12} style={{ color: isUT ? 'var(--hc-turmeric)' : 'var(--hc-saffron)', flexShrink: 0 }} />
+                              <MapPin size={12} style={{ color: isUT ? '#F5A623' : '#E8692A', flexShrink: 0 }} />
                               {state}
                             </span>
                             <span style={styles.stateCardDish}>
@@ -584,7 +594,7 @@ const styles = {
     padding: '16px',
     borderRadius: '12px',
     background: 'linear-gradient(135deg, rgba(232, 105, 42, 0.1) 0%, rgba(232, 105, 42, 0.02) 100%)',
-    border: '1px dashed var(--hc-saffron)',
+    border: '1px dashed #E8692A',
     display: 'flex',
     alignItems: 'center',
     gap: '12px'
@@ -592,7 +602,7 @@ const styles = {
   zoneHeaderTitle: {
     fontSize: '13px', 
     fontWeight: 800, 
-    color: 'var(--hc-saffron)', 
+    color: '#E8692A', 
     letterSpacing: '1px',
     textTransform: 'uppercase',
     margin: 0
@@ -600,7 +610,7 @@ const styles = {
   backToMapLink: {
     background: 'none',
     border: 'none',
-    color: 'var(--hc-saffron)',
+    color: '#E8692A',
     fontSize: '12px',
     fontWeight: 800,
     cursor: 'pointer'
@@ -651,7 +661,7 @@ const styles = {
     height: '160px',
     borderRadius: '50%',
     background: 'radial-gradient(circle, rgba(232, 105, 42, 0.15) 0%, rgba(30, 20, 15, 0) 70%)',
-    border: '2px dashed var(--hc-saffron)',
+    border: '2px dashed #E8692A',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -661,7 +671,7 @@ const styles = {
   zoomedBadge: {
     position: 'absolute',
     bottom: '-10px',
-    backgroundColor: 'var(--hc-saffron)',
+    backgroundColor: '#E8692A',
     padding: '4px 12px',
     borderRadius: '20px',
     fontSize: '11px',
@@ -673,7 +683,7 @@ const styles = {
     width: '100%',
     backgroundColor: 'rgba(44, 26, 17, 0.95)',
     backdropFilter: 'blur(20px)',
-    border: '1.5px solid var(--hc-saffron)',
+    border: '1.5px solid #E8692A',
     borderRadius: '16px',
     padding: '20px',
     boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
@@ -684,7 +694,7 @@ const styles = {
   detailCardLabel: {
     fontSize: '10px', 
     fontWeight: 800, 
-    color: 'var(--hc-saffron)', 
+    color: '#E8692A', 
     letterSpacing: '1px',
     textTransform: 'uppercase'
   },
@@ -724,7 +734,7 @@ const styles = {
     flex: 2,
     padding: '12px',
     borderRadius: '10px',
-    backgroundColor: 'var(--hc-saffron)',
+    backgroundColor: '#E8692A',
     border: 'none',
     color: '#FFFFFF',
     fontWeight: 800,
@@ -770,7 +780,7 @@ const styles = {
     top: '12px',
     right: '12px',
     backgroundColor: 'rgba(44, 26, 17, 0.9)',
-    border: '1px solid var(--hc-saffron)',
+    border: '1px solid #E8692A',
     color: '#FFFFFF',
     borderRadius: '12px',
     padding: '8px 14px',

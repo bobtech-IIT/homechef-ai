@@ -50,10 +50,10 @@ export default function App() {
       <header style={styles.topBar} className="glass-panel">
         <div style={styles.logoRow}>
           <span style={styles.logoIcon}>🥘</span>
-          <h2 className="text-serif" style={styles.logoText}>HomeChef <span style={styles.logoBadge}>v3</span></h2>
+          <h2 className="text-serif" style={styles.logoText}>HomeChef <span style={styles.logoBadge}>AI</span></h2>
         </div>
         <button style={styles.gearBtn} onClick={() => setIsSettingsOpen(true)}>
-          ⚙️
+          ⚙
         </button>
       </header>
 
@@ -76,9 +76,9 @@ export default function App() {
         {[
           { icon: '🏠', label: 'Home' },
           { icon: '📅', label: 'Planner' },
-          { icon: '💬', label: 'AI Chat' },
+          { icon: '💬', label: 'Chat' },
           { icon: '🫙', label: 'Pantry' },
-          { icon: '📜', label: 'Nani\'s Vault' }
+          { icon: '📜', label: 'Vault' }
         ].map((tab, idx) => {
           const isActive = idx === activeTab;
           return (

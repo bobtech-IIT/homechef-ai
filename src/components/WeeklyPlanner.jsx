@@ -98,8 +98,8 @@ export default function WeeklyPlanner() {
     <div style={styles.scrollContainer} className="no-scrollbar animate-fade-in">
       {/* Page Title */}
       <div style={styles.header}>
-        <h1 className="text-serif" style={styles.title}>Weekly Planner</h1>
-        <p style={styles.subtitle}>Click any day to manage your thalis</p>
+        <h1 className="text-serif" style={styles.title}>Planner</h1>
+        <p style={styles.subtitle}>Tap day. Swap or save with archetype flavor.</p>
       </div>
 
       {/* Horizontal Day Selector */}
@@ -147,11 +147,11 @@ export default function WeeklyPlanner() {
               <div style={styles.actionRow}>
                 {plannedMeal.steps && plannedMeal.steps.length > 0 && (
                   <button style={styles.actionBtn} onClick={() => setSelectedRecipe(plannedMeal)}>
-                    📖 Recipe
+                    View
                   </button>
                 )}
                 <button style={styles.actionBtn} onClick={() => handleSwapMeal(meal.key)}>
-                  🔄 Swap Thali
+                  Swap
                 </button>
               </div>
             </div>
@@ -162,10 +162,10 @@ export default function WeeklyPlanner() {
       {/* Action Buttons Row */}
       <div style={styles.shareContainer}>
         <button style={{ ...styles.shareBtn, marginBottom: '12px' }} className="btn-primary" onClick={handleShareToWhatsApp}>
-          📲 Share Grocery List on WhatsApp
+          Share List
         </button>
         <button style={styles.printTriggerBtn} onClick={() => setShowPdfModal(true)}>
-          🖨️ Download / Print 7-Day Plan PDF
+          Print Plan
         </button>
       </div>
 
@@ -188,7 +188,7 @@ export default function WeeklyPlanner() {
               </ol>
             </div>
 
-            <button style={styles.closeModalBtn} onClick={() => setSelectedRecipe(null)}>Close Cooking Panel</button>
+            <button style={styles.closeModalBtn} onClick={() => setSelectedRecipe(null)}>Done</button>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { clearAICache, getAIStatus } from '../utils/puterAI';
 
 export default function SettingsPanel({ isOpen, onClose }) {
   const { state, dispatch } = useApp();
@@ -28,7 +29,8 @@ export default function SettingsPanel({ isOpen, onClose }) {
     } else {
       dispatch({ type: 'RESET_ALL' });
       localStorage.removeItem('homechef_v3_state');
-      localStorage.removeItem('homechef_ai_cache_v3');
+      localStorage.removeItem('homechef_ai_cache_v2'); // correct key (v2 used by puterAI)
+      clearAICache(); // also invoke exported for status side-effects + logs
       setResetConfirm(false);
       onClose();
       // Reload to restart Setup Wizard
@@ -42,7 +44,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
         {/* Header */}
         <div style={styles.header}>
           <h2 className="text-serif" style={styles.title}>Settings</h2>
-          <button style={styles.closeBtn} onClick={onClose}>✕</button>
+          <button style={styles.closeBtn} onClick={onClose}>Close</button>
         </div>
 
         {/* Profile Card Summary */}
@@ -51,7 +53,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
           <div style={styles.profileInfo}>
             <h3 style={styles.profileName}>{(profile?.familyName || 'Sharma')} Family</h3>
             <span style={styles.profileDetails}>
-              {(profile?.regionalPalate || 'general').toUpperCase()} Cuisine • {profile?.dietType || 'Vegetarian 🌱'}
+              {(profile?.regionalPalate || 'general').toUpperCase()} • {profile?.dietType || 'Vegetarian'}
             </span>
           </div>
         </div>
@@ -80,9 +82,9 @@ export default function SettingsPanel({ isOpen, onClose }) {
                 onChange={handleArchetypeChange}
                 style={styles.selectInput}
               >
-                <option value="standard">Standard Household 🏠</option>
-                <option value="biohacker">European VC's Wife (Bio-Hacker) 🌿</option>
-                <option value="cognitive">Shark Tank Judge (Cognitive Hustler) 🔥</option>
+                <option value="standard">Classic</option>
+                <option value="biohacker">European VC's Wife (Bio-Hacker)</option>
+                <option value="cognitive">Shark Tank Judge (Cognitive Hustler)</option>
               </select>
             </div>
             <div style={styles.preferenceRow}>
@@ -95,17 +97,53 @@ export default function SettingsPanel({ isOpen, onClose }) {
             </div>
           </div>
 
+          {/* Slice 3: Small visible AI status + Force Reconnect control (available from Settings too) */}
           <div style={styles.section}>
-            <h4 style={styles.sectionTitle}>Privacy & Policies</h4>
-            <p style={styles.policyText}>
-              HomeChef AI v3 utilizes secure <strong style={{ color: '#E8692A' }}>Advanced Cloud AI</strong>. All cooking data stays in your browser cache.
+            <h4 style={styles.sectionTitle}>AI Health & Reconnect</h4>
+            <div style={{ fontSize: '12px', color: '#4A2C1A', marginBottom: '6px' }}>
+              {(() => {
+                try {
+                  const s = getAIStatus();
+                  const arch = profile.culinaryArchetype || 'standard';
+                  return `RAG ${s.status || 'ready'} • ${arch}`;
+                } catch { return 'Offline RAG ready'; }
+              })()}
+            </div>
+            <button
+              onClick={() => {
+                const ok = clearAICache();
+                alert(ok ? 'Cache cleared. Next chat uses fresh RAG.' : 'Attempted');
+              }}
+              style={{
+                ...styles.selectInput,
+                width: '100%',
+                padding: '8px 10px',
+                background: '#FEF3DC',
+                border: '1px solid #E8692A',
+                color: '#C4501A',
+                fontWeight: '700',
+                cursor: 'pointer',
+                marginTop: '4px'
+              }}
+            >
+              Clear Cache
+            </button>
+            <p style={{ fontSize: '10px', color: '#7A5540', marginTop: '4px' }}>
+              Archetype transforms every RAG retrieval.
             </p>
           </div>
 
-          {/* Dangerous Zone (de-emphasized as requested in audit) */}
+          <div style={styles.section}>
+            <h4 style={styles.sectionTitle}>Privacy</h4>
+            <p style={styles.policyText}>
+              All data lives in your browser. Offline RAG runs locally.
+            </p>
+          </div>
+
+          {/* Danger Zone */}
           <div style={styles.dangerZone}>
-            <h4 style={styles.dangerTitle}>Danger Zone</h4>
-            <p style={styles.dangerDesc}>Deletes all setup data, cached menus, and reset preferences.</p>
+            <h4 style={styles.dangerTitle}>Reset</h4>
+            <p style={styles.dangerDesc}>Clear all data and restart setup.</p>
             <button
               style={{
                 ...styles.resetBtn,
@@ -115,11 +153,11 @@ export default function SettingsPanel({ isOpen, onClose }) {
               }}
               onClick={handleHardReset}
             >
-              {resetConfirm ? '⚠️ Tap again to confirm deletion' : 'Clear Saved Data & Reset'}
+              {resetConfirm ? 'Confirm Reset' : 'Reset App'}
             </button>
             {resetConfirm && (
               <button style={styles.cancelResetBtn} onClick={() => setResetConfirm(false)}>
-                Cancel Reset
+                Cancel
               </button>
             )}
           </div>

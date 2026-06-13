@@ -52,8 +52,8 @@ export default function InventoryManager({ onTriggerChatPrompt }) {
     <div style={styles.scrollContainer} className="no-scrollbar animate-fade-in">
       {/* Page Title */}
       <div style={styles.header}>
-        <h1 className="text-serif" style={styles.title}>Rasoi Inventory</h1>
-        <p style={styles.subtitle}>Manage your ingredients & track fresh items</p>
+        <h1 className="text-serif" style={styles.title}>Pantry</h1>
+        <p style={styles.subtitle}>Track what you have. RAG uses it instantly.</p>
       </div>
 
       {/* Expiry Intelligence Banner (Innovation 3) */}
@@ -69,7 +69,7 @@ export default function InventoryManager({ onTriggerChatPrompt }) {
             style={styles.expiryActionBtn}
             onClick={() => onTriggerChatPrompt(`I have ${expiringSoonItems.map(i => i.name).join(' and ')} that are expiring soon. Suggest a quick comforting recipe using them.`)}
           >
-            💡 Suggest Expiry-Buster Recipe →
+            Ask Nani
           </button>
         </div>
       )}
@@ -98,11 +98,11 @@ export default function InventoryManager({ onTriggerChatPrompt }) {
       {/* Add Item Trigger */}
       {!showAddForm ? (
         <button style={styles.addTriggerBtn} className="btn-secondary" onClick={() => setShowAddForm(true)}>
-          ➕ Add New Ingredient
+          Add
         </button>
       ) : (
         <form onSubmit={handleAddItem} style={styles.addForm} className="glass-card animate-pop">
-          <h4 style={styles.formTitle}>Add New Item</h4>
+          <h4 style={styles.formTitle}>Add Item</h4>
           
           <input
             type="text"
@@ -149,7 +149,7 @@ export default function InventoryManager({ onTriggerChatPrompt }) {
         {filteredItems.length === 0 ? (
           <div style={styles.emptyState}>
             <span>🫙</span>
-            <p>Aapki list abhi khali hai beta. Add some ingredients above!</p>
+            <p>Empty. Add items above. RAG will use them.</p>
           </div>
         ) : (
           filteredItems.map(item => {
