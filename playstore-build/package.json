@@ -1,0 +1,20 @@
+{
+  "name": "homechef-ai-playstore-wrapper",
+  "version": "1.0.0",
+  "description": "Google Play Store Capacitor Wrapper for HomeChef AI",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Web assets already built in dist/'",
+    "init-cap": "npm install @capacitor/core @capacitor/cli @capacitor/android",
+    "cap-add": "npx cap add android",
+    "cap-sync": "npx cap sync",
+    "cap-open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}
