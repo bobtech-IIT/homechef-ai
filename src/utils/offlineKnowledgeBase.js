@@ -284,12 +284,12 @@ ${selected.steps.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}
 export const getLocalFallbackChat = (query = '') => {
   const q = query.toLowerCase();
   
-  if (q.includes('hello') || q.includes('hi') || q.includes('namaste') || q.includes('suno')) {
-    return `Namaste! Main aapka **Rasoi Saathi** hoon. 🍳 
+  if (q.includes('hello') || q.includes('hi') || q.includes('namaste') || q.includes('suno') || q.includes('dhanyawad')) {
+    return `Namaste beta! Main aapki **Nani - Rasoi Saathi** hoon. 🍳 
 
-Main abhi offline mode me chal raha hoon, par main aapki basic help kar sakta hoon! Aap mujhse kisi bhi traditional Indian state (jaise Gujarat, Punjab, Maharashtra, Bengal, Kerala, Tamil Nadu) ki recipe maang sakte hain ya pantry management ke baare me pooch sakte hain.
+Aaj thoda network slow hai, lekin meri rasoi ki yaadein aur traditional recipes kabhi offline nahi hoti. Aap mujhse Haryana, Bengal, Gujarat, Punjab, Maharashtra, Tamil Nadu, Kerala ya kisi bhi state ki traditional recipe maang sakte ho — step-by-step, bilkul ghar jaisa.
 
-Aap aaj kya banana chahte hain?`;
+Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
   }
   
   if (q.includes('expir') || q.includes('inventory') || q.includes('samaan') || q.includes('kharab')) {
@@ -304,10 +304,41 @@ Aapke offline record ke mutabik sabhi items safe hain. Agar aapko koi specific i
 Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarati select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
   }
 
-  // Default smart template
-  return `Ji bilkul! Main samajh gaya. 
+  if (q.includes('bajre') || q.includes('bajra') || (q.includes('haryana') && q.includes('khichdi')) || q.includes('bajre ki khichdi')) {
+    return `Arre waah beta! Haryana ki **Bajre ki Khichdi** maangi hai na? Bahut hi pyari aur sehatmand dish hai — sardi mein toh jaan hai!
 
-Main abhi offline local database me isko search kar raha hoon. Jab tak main online connection wapas establish kar raha hoon, aap is swadisht aur quick **Homestyle Khichdi** try kar sakte hain. Yeh comfort food har weather aur har occasion ke liye perfect hai!
+**📝 Ingredients (4-5 logon ke liye):**
+- Bajra (pearl millet) — 1 cup, achhe se dhoya hua
+- Moong dal (optional, thodi si) — 2-3 tbsp
+- Paani — 4-5 cups (adjust for consistency)
+- Namak + haldi — swaad anusaar
+- Ghee — 3-4 bade chamach (asli desi ghee best!)
+- Hand-churned white butter (makkhan) — serving ke liye
+- Garam masala + jeera (optional tadka)
+- Fresh coriander + adrak — thodi si
 
-*(Aap specific state jaise 'Punjab Dal' ya 'Bengal Aloo' likhkar offline recipes access kar sakte hain).*`;
+**👩‍🍳 Step-by-Step (Traditional Slow-Cooked Tarika):**
+1. Bajre ko raat bhar bhigokar rakho ya kam se kam 4-5 ghante. Phir usko achhe se dholo.
+2. Ek bhari handi mein 4 cups paani daalo, namak + haldi + thodi si ghee. Ubaal aane do.
+3. Bhiga hua bajra + moong dal daal kar dheemi aanch par 40-50 minute dheere dheere pakao. Beech-beech mein hilate raho taaki na chipke. Agar paani kam pade toh garam paani add karte raho — yeh khichdi patli-pasand hoti hai!
+4. Jab bajra bilkul gal jaaye aur ek creamy, comforting texture aa jaaye, toh last mein 2 bade chamach desi ghee aur thoda jeera tadka (optional) daal do.
+5. Garam-garam serve karo. Upar se haath se makkhan (white butter) ki moti moti dollops + thandi meethi lassi ke saath. 
+
+Yeh dish Haryana ke kheton ki mehak laati hai. Ghee aur makkhan kam mat karna — yahi iska asli swaad hai! 
+
+Koi baat nahi agar cloud wapas aa jaaye, main phir bhi yahi traditional tarika hi bataungi. Shubh bhojan beta! 💛`;
+  }
+  
+  // Default smart template — always helpful
+  return `Ji bilkul beta! Main samajh gaya. 
+
+Main abhi offline local database me isko search kar raha hoon lekin yeh lo — ek bahut hi swadisht aur jaldi banne wali comfort recipe:
+
+**Homestyle Bajra-Mix Veg Khichdi** (ya jo bhi aapke paas hai usse bana lo).
+- Jo daal-chawal/bajra ho, usko ghee mein jeera + haldi + namak daal kar 15-20 min dheemi aanch par paka do.
+- Last mein fresh dhaniya + thoda ghee upar se.
+
+Aap specific state likho (jaise 'Haryana Bajre ki Khichdi', 'Bengal Ilish', 'Punjab Sarson') — main aapko exact traditional steps offline bhi de dungi. 
+
+Jab connection wapas aayega tab aur gehri baatein karenge. Aaj kya special bana rahe ho?`;
 };

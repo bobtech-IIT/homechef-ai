@@ -100,9 +100,11 @@ function appReducer(state, action) {
 }
 
 export function AppProvider({ children }) {
+  const STORAGE_KEY = 'homechef_state_v4'; // Bumped from v3 to break stale "Sharma" cached sessions from prior agent runs. Old key ignored → fresh wizard on first load after update.
+
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE, () => {
     try {
-      const savedState = localStorage.getItem('homechef_v3_state');
+      const savedState = localStorage.getItem(STORAGE_KEY);
       if (savedState) {
         const parsed = JSON.parse(savedState);
         const hasCulinaryArchetype = parsed.profile && parsed.profile.culinaryArchetype;
@@ -129,7 +131,7 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('homechef_v3_state', JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
     }

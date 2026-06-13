@@ -371,6 +371,20 @@ export default function AIChatPlanner() {
               <span style={styles.avatar}>👵</span>
               <div style={styles.headerTitleContainer}>
                 <h3 style={styles.headerTitle}>Nani's AI Rasoi Saathi</h3>
+                <div style={{ fontSize: '10px', color: '#7A5540', marginTop: '2px' }}>
+                  AI: Local wisdom + Puter attempts (console for details) 
+                  <button 
+                    onClick={() => {
+                      try { 
+                        localStorage.removeItem('homechef_ai_cache_v2'); 
+                        alert('AI cache cleared — next message will retry Puter. Ask Nani a recipe!'); 
+                      } catch(e){}
+                    }}
+                    style={{ marginLeft: '8px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: 'transparent', color: '#E8692A', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Clear AI Cache / Reconnect
+                  </button>
+                </div>
                 <span style={styles.statusLabel}>
                   {navigator.onLine ? '● AI Assistant Connected' : '● Local Offline Backup Active'}
                 </span>

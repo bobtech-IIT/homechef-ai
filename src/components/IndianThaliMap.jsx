@@ -229,15 +229,15 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
             transformOrigin: 'center center',
             transform: mapTransform
           }}>
-            {/* Stylized background outline map of India - Saffron glow! */}
+            {/* Stylized background outline map of India - Saffron glow! (defensive explicit colors for visibility even if CSS vars missing) */}
             <svg viewBox="0 0 100 100" style={styles.indiaSilhouette}>
               <polygon 
                 points="45,5 50,8 50,15 54,20 62,28 70,27 74,28 90,24 92,34 88,42 78,42 72,46 64,55 56,68 50,84 47,92 42,82 36,70 32,62 30,56 14,46 12,40 22,30 30,20 38,12" 
                 style={{ 
-                  fill: 'rgba(232, 105, 42, 0.15)', 
+                  fill: 'rgba(232, 105, 42, 0.18)', 
                   stroke: '#E8692A', 
-                  strokeWidth: '0.9',
-                  filter: 'drop-shadow(0 0 8px rgba(232, 105, 42, 0.4))',
+                  strokeWidth: '1.1',
+                  filter: 'drop-shadow(0 0 10px rgba(232, 105, 42, 0.5))',
                   strokeDasharray: '2, 1'
                 }} 
               />
