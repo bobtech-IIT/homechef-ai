@@ -279,7 +279,7 @@ const callPuterREST = async () => {
 };
 
 const callPuterWithMessages = async (messages, attempt = 1) => {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = await callPuterREST();
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
