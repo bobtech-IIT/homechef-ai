@@ -6,17 +6,13 @@
  * 3. Smart LocalStorage Caching (24h expiry)
  * 4. Model Selection Routing (gpt-4o-mini for speed, gpt-4o for complex thali plans)
  *
- * Puter Guest / Login Bypass technique (researched from docs.puter.com + FAQ + GitHub issues):
- * - Include <script src="https://js.puter.com/v2/"></script> (in index.html)
- * - NEVER call signIn() on every action or in non-gesture code.
- * - Use puter.auth.signIn({ attempt_temp_user_creation: true }) **exactly once** from a user gesture
- *   (first "Ask Nani" click). This triggers Puter's random temp/guest user creation automatically
- *   with no full signup required.
- * - After this one-time call, the SDK populates auth tokens in localStorage (various puter.* keys).
- * - Our direct REST to https://api.puter.com/puterai/openai/v1/chat/completions then uses the harvested
- *   Bearer token for authenticated guest quotas (higher than pure anonymous).
- * - All essential Puter methods auto-handle auth; we avoid explicit signIn except the single random-guest trigger.
- * - Strong local RAG + KB always available so no UI ever "requires login".
+ * Login-free design (final fix):
+ * - Default path: Direct REST to Puter (no token required) + immediate rich local RAG fallback.
+ * - We deliberately do NOT auto-call signIn() from chat sends or queryAI.
+ * - The only way to ever attempt a Puter guest session is via the explicit "Boost" button (opt-in).
+ * - This guarantees zero login popups during normal use.
+ * - Local RAG + archetype + KB is the reliable, always-on experience (the real strength).
+ * - If you want live cloud responses, tap Boost once per session (may open a one-time guest creation popup).
  */
 
 import { getLocalFallbackRecipe, getLocalFallbackChat } from './offlineKnowledgeBase';
@@ -293,11 +289,10 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 };
 
 /**
- * One-time random guest token trigger (the researched bypass).
- * Call this ONLY from a user-initiated click (e.g. first chat send).
- * Uses attempt_temp_user_creation so Puter auto-creates a temp guest session
- * (random temp account) without forcing a full login or signup.
- * After success the SDK writes token(s) that our REST harvester picks up.
+ * Opt-in only: random guest token trigger.
+ * This is deliberately NOT called automatically from chat or queries.
+ * Only the "Boost" button in the Nani UI calls it (user explicitly wants live Puter).
+ * Uses attempt_temp_user_creation for a random temp guest session (no full account needed).
  */
 let hasTriggeredGuest = false;
 

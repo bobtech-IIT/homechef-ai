@@ -106,8 +106,8 @@ export default function SettingsPanel({ isOpen, onClose }) {
                   const s = getAIStatus();
                   const rawArch = profile.culinaryArchetype || 'standard';
                   const archLabel = rawArch === 'biohacker' ? 'Biohacker' : rawArch === 'cognitive' ? 'Cognitive' : 'Classic';
-                  return `RAG ${s.status || 'ready'} • ${archLabel}`;
-                } catch { return 'Offline RAG ready'; }
+                  return `Zero-login RAG • ${archLabel}`;
+                } catch { return 'Local RAG ready (no login)'; }
               })()}
             </div>
             <button

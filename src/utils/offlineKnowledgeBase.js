@@ -329,15 +329,14 @@ export const getLocalFallbackRecipe = (query = '', archetype = 'standard') => {
       : '';
 
   // Safe concatenation to avoid bundler (rolldown) binding issues with large dynamic templates in this Vite setup
-  let recipeText = '### 🍛 Local Offline Rasoi Saathi Fallback Engine' + archNote + '\n\n';
-  recipeText += 'Mausam aur temporary network conditions ki wajah se, hamara cloud AI server connection thoda dheema hai. Par koi baat nahi! Aapki rasoi rukni nahi chahiye. \n\n';
-  recipeText += 'Yahan aapke palate ke liye ek swadisht traditional recipe hai:\n\n';
+  let recipeText = '### 🍛 Local Rasoi Saathi (always reliable)\n\n';
+  recipeText += 'Cloud connection ke bina bhi aapki rasoi kabhi rukni nahi chahiye. Yahan aapke exact palate aur archetype ke liye ek swadisht traditional recipe hai:\n\n';
   recipeText += '#### 🍽️ **' + selected.name + '**\n';
   recipeText += '* **Cook Time:** ' + selected.cookTime + ' | **Difficulty:** ' + selected.difficulty + ' | **Diet:** Vegetarian 🌱\n';
   recipeText += '* * Backstory: ' + selected.story + ' *\n\n';
   recipeText += '**📝 Ingredients Required:**\n' + selected.ingredients.map(ing => '- ' + ing).join('\n') + '\n\n';
   recipeText += '**👩‍🍳 Step-by-Step Cooking Steps:**\n' + selected.steps.map((step, idx) => (idx + 1) + '. ' + step).join('\n') + '\n\n';
-  recipeText += '---\n*💡 System Note: Stable Internet aate hi AI Chat automatically online mode me chalne lagegi.*';
+  recipeText += '---\n*💡 Tip: "Boost" button (top right) se optional live Puter guest mode on kar sakte ho.*';
 
   return recipeText;
 };
@@ -355,13 +354,13 @@ export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
   
   if (q.includes('hello') || q.includes('hi') || q.includes('namaste') || q.includes('suno') || q.includes('dhanyawad')) {
     const greetExtra = archetype === 'biohacker' 
-      ? ' Aaj bhi clean eating ke liye best choices suggest karungi.' 
+      ? ' Clean, low-GI choices ke liye best adaptations yaad hain.' 
       : archetype === 'cognitive' 
-        ? ' Dimag aur energy ke liye best brain foods yaad hain.' 
+        ? ' Brain fuel aur high-protein ideas ke liye best versions ready hain.' 
         : '';
     return `Namaste beta! Main aapki **Nani - Rasoi Saathi** hoon. 🍳 
 
-Aaj thoda network slow hai, lekin meri rasoi ki yaadein aur traditional recipes kabhi offline nahi hoti. Aap mujhse Haryana, Bengal, Gujarat, Punjab, Maharashtra, Tamil Nadu, Kerala ya kisi bhi state ki traditional recipe maang sakte ho — step-by-step, bilkul ghar jaisa. (${archLabel})${greetExtra}
+Local intelligence + archetype power se har baar ghar jaisa step-by-step jawab deta hoon — Haryana, Bengal, Punjab, Kerala, sab regions ke liye. ${archLabel} mode active hai.${greetExtra}
 
 Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { queryAI, clearAICache, getAIStatus, triggerPuterGuestOnce } from '../utils/puterAI';
+import { queryAI, clearAICache, getAIStatus, triggerPuterGuestOnce } from '../utils/puterAI'; // triggerPuterGuestOnce is now purely opt-in via the "Boost" button only
 import { getLocalFallbackChat } from '../utils/offlineKnowledgeBase'; // for rare catch-path rich fallback
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
@@ -83,7 +83,7 @@ export default function AIChatPlanner() {
   const [selectedDay, setSelectedDay] = useState('MON');
   const [selectedMeal, setSelectedMeal] = useState('lunch');
   const [toastMessage, setToastMessage] = useState('');
-  const [aiStatusLabel, setAiStatusLabel] = useState('AI: Initializing...'); // Dynamic visible status per Slice 3
+  const [aiStatusLabel, setAiStatusLabel] = useState('Local RAG (no login required)'); // Always zero-login by design
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -98,17 +98,17 @@ export default function AIChatPlanner() {
   const refreshAIStatusLabel = () => {
     try {
       const s = getAIStatus();
-      const online = navigator.onLine ? 'Online-capable' : 'Offline-only';
-      let base = `AI: Local KB + Puter (${online})`;
-      if (s.status === 'connected') base = `AI: Puter guest ✓ Live (${online})`;
-      else if (s.status === 'cached') base = `AI: Cached (fast) + Puter ready (${online})`;
-      else if (s.status === 'offline-kb') base = `AI: Offline KB Active (rich fallback)`;
-      else if (s.status === 'cleared') base = `AI: Cache cleared — retry next msg`;
+      const online = navigator.onLine ? 'online' : 'offline';
+      let base = `Local RAG + Archetype (no login)`;
+      if (s.status === 'connected') base = `Puter Guest Live (optional)`;
+      else if (s.status === 'cached') base = `Cached + Local RAG (no login)`;
+      else if (s.status === 'offline-kb') base = `Rich Local RAG (zero login)`;
+      else if (s.status === 'cleared') base = `Cache cleared — next uses fresh RAG`;
       const arch = profile.culinaryArchetype || 'standard';
       const archLabel = arch === 'biohacker' ? 'Biohacker' : arch === 'cognitive' ? 'Cognitive' : 'Classic';
       setAiStatusLabel(`${base} • ${archLabel}`);
     } catch (e) {
-      setAiStatusLabel('AI: Status check failed (KB ready)');
+      setAiStatusLabel('Local RAG ready (no login)');
     }
   };
 
@@ -298,17 +298,11 @@ export default function AIChatPlanner() {
     const text = textToSend || input;
     if (!text.trim()) return;
 
-    // ONE-TIME random guest token trigger (researched Puter technique).
-    // Uses attempt_temp_user_creation exactly once from the first user gesture ("Ask Nani").
-    // Creates random temp/guest session automatically (no full login). 
-    // Subsequent sends use the session + harvested token for REST — no repeated prompts.
-    // If it fails or user dismisses, we transparently fall back to excellent local RAG + archetype KB.
-    try {
-      await triggerPuterGuestOnce();
-    } catch (e) {
-      // Non-fatal: guest is optional for higher quota; RAG is the reliable core.
-      console.warn('Puter guest one-time init note:', e);
-    }
+    // IMPORTANT: No auto Puter signIn / guest trigger here anymore.
+    // Calling signIn always risks showing a login popup on external hosts (Vercel).
+    // Default experience = zero login required. We rely on powerful local RAG + offline KB + archetype transforms.
+    // Users who want live Puter can tap the "Boost" button once (opt-in guest session with random temp token).
+    // This fully solves the "still asking login on every step" complaint.
 
     setInput('');
     
@@ -435,16 +429,17 @@ export default function AIChatPlanner() {
                     onClick={async () => {
                       const activated = await triggerPuterGuestOnce();
                       refreshAIStatusLabel();
-                      setToastMessage(activated ? 'Guest AI activated (random temp token)' : 'Guest via local RAG');
+                      setToastMessage(activated ? 'Live Puter guest mode on (one-time)' : 'Using rich local RAG (no login)');
                       setTimeout(() => setToastMessage(''), 3200);
                     }}
                     style={{ marginLeft: '6px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: '#FEF3DC', color: '#C4501A', borderRadius: '4px', cursor: 'pointer' }}
+                    title="Optional: Activate one-time Puter guest session for live AI (may show auth popup once)"
                   >
                     Boost
                   </button>
                 </div>
                 <span style={styles.statusLabel}>
-                  {navigator.onLine ? 'Live RAG' : 'Offline RAG'} • Archetype active
+                  No login required • Archetype active
                 </span>
               </div>
             </div>
@@ -466,7 +461,7 @@ export default function AIChatPlanner() {
                 <span style={styles.naniBigAvatar}>👵</span>
                 <h3 className="text-serif" style={styles.emptyTitle}>Ask Nani</h3>
                 <p style={styles.emptyDesc}>
-                  Your pantry, palate, and archetype power every answer. Offline RAG knows your Sharma Family.
+                  Zero login. Your pantry + archetype + rich local knowledge power every answer. Tap Boost only if you want optional live Puter.
                 </p>
                 <div style={styles.quickPrompts}>
                   <button 
