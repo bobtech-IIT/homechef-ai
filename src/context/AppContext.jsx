@@ -104,29 +104,19 @@ export function AppProvider({ children }) {
 
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE, () => {
     try {
-      const savedState = localStorage.getItem(STORAGE_KEY);
-      if (savedState) {
-        const parsed = JSON.parse(savedState);
-        const hasCulinaryArchetype = parsed.profile && parsed.profile.culinaryArchetype;
-        const profile = {
-          ...INITIAL_STATE.profile,
-          ...(parsed.profile || {})
-        };
-        // If they had completed setup but had no culinaryArchetype (old v2 state), force setup to rerun
-        if (profile.isSetupComplete && !hasCulinaryArchetype) {
-          profile.isSetupComplete = false;
-        }
-        return {
-          ...INITIAL_STATE,
-          ...parsed,
-          profile
-        };
-      }
-      return INITIAL_STATE;
+      // Ephemeral mode: always start completely fresh on app open.
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('homechef_state_v3');
+      localStorage.removeItem('homechef_state_v2');
+      localStorage.removeItem('homechef_state');
+      localStorage.removeItem('homechef_custom_recipes');
+      localStorage.removeItem('homechef_custom_rag_chunks');
+      localStorage.removeItem('homechef_dynamic_thali_data');
+      console.log('🧹 Headless PWA: Cleared all old cache. Starting completely fresh!');
     } catch (e) {
-      console.warn('LocalStorage load failed, using defaults:', e);
-      return INITIAL_STATE;
+      console.warn('Failed to clear local storage:', e);
     }
+    return INITIAL_STATE;
   });
 
   useEffect(() => {

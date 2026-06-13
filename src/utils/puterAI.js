@@ -279,29 +279,15 @@ const callPuterREST = async () => {
 };
 
 const callPuterWithMessages = async (messages, attempt = 1) => {
-  // Silently generate a guest token if we don't have one
-  try {
-    if (typeof window !== 'undefined' && window.puter?.auth) {
-      const existingToken = localStorage.getItem('puter.auth.token.v2') || 
-                            localStorage.getItem('puter.auth.token') || 
-                            window.puter.authToken;
-      if (!existingToken && !window.puter.auth.isSignedIn()) {
-        console.log('🔄 Headless PWA: Silently generating guest token...');
-        await window.puter.auth.signIn({ attempt_temp_user_creation: true });
-        console.log('✅ Headless PWA: Guest token generated.');
-      }
-    }
-  } catch (e) {
-    console.warn('Puter guest token auto-creation failed:', e);
-  }
-
-  const headers = await callPuterREST();
+  const headers = { 'Content-Type': 'application/json' };
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    console.log(`🤖 Puter REST guest (attempt ${attempt}/${PUTER_RETRIES})...`);
+    console.log(`🤖 Puter REST guest direct (attempt ${attempt}/${PUTER_RETRIES})...`);
     const res = await fetch('https://api.puter.com/puterai/openai/v1/chat/completions', {
-      method: 'POST', headers, signal: ctrl.signal,
+      method: 'POST', 
+      headers, 
+      signal: ctrl.signal,
       body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.75, max_tokens: 900 }),
     });
     clearTimeout(tid);
