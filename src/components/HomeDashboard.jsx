@@ -74,9 +74,9 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const palateBadge = profile.regionalPalate ? profile.regionalPalate : 'Kolkata';
   const dietBadge = profile.dietType || 'Non-Veg';
   const archetypeBadge = profile.culinaryArchetype === 'biohacker' 
-    ? "European VC's Wife (Bio-Hacker)" 
+    ? 'Biohacker' 
     : profile.culinaryArchetype === 'cognitive' 
-      ? 'Shark Tank Judge (Cognitive Hustler)' 
+      ? 'Cognitive' 
       : 'Classic';
 
   const fullProfileLine = `${familyName} • ${archetypeBadge}`;
@@ -148,14 +148,8 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
     setIsMoodLoading(true);
     setMoodResponse('');
 
-    // Trigger guest auth check on click if not authenticated
-    if (window.puter && window.puter.auth && !window.puter.auth.isSignedIn()) {
-      try {
-        await window.puter.auth.signIn({ attempt_temp_user_creation: true });
-      } catch (err) {
-        console.warn("Guest sign-in on mood select failed:", err);
-      }
-    }
+    // Note: No repeated guest signIn here (mood is secondary). The primary Nani chat (first Ask Nani)
+    // triggers the single random guest token via triggerPuterGuestOnce. Pure local RAG powers everything reliably.
 
     const prompt = `Family mood is: ${mood} (${label}). Regional palate is: ${profile.regionalPalate}. Diet type: ${profile.dietType}. Suggest 3 comforting, quick Indian home-cookable meal ideas for this mood. Speak in an encouraging, warm Hinglish style. Keep it under 150 words.`;
     

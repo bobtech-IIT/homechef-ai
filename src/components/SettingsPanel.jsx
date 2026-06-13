@@ -83,8 +83,8 @@ export default function SettingsPanel({ isOpen, onClose }) {
                 style={styles.selectInput}
               >
                 <option value="standard">Classic</option>
-                <option value="biohacker">European VC's Wife (Bio-Hacker)</option>
-                <option value="cognitive">Shark Tank Judge (Cognitive Hustler)</option>
+                <option value="biohacker">Biohacker</option>
+                <option value="cognitive">Cognitive</option>
               </select>
             </div>
             <div style={styles.preferenceRow}>
@@ -104,8 +104,9 @@ export default function SettingsPanel({ isOpen, onClose }) {
               {(() => {
                 try {
                   const s = getAIStatus();
-                  const arch = profile.culinaryArchetype || 'standard';
-                  return `RAG ${s.status || 'ready'} • ${arch}`;
+                  const rawArch = profile.culinaryArchetype || 'standard';
+                  const archLabel = rawArch === 'biohacker' ? 'Biohacker' : rawArch === 'cognitive' ? 'Cognitive' : 'Classic';
+                  return `RAG ${s.status || 'ready'} • ${archLabel}`;
                 } catch { return 'Offline RAG ready'; }
               })()}
             </div>

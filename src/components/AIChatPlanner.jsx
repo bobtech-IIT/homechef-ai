@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { queryAI, clearAICache, getAIStatus } from '../utils/puterAI';
+import { queryAI, clearAICache, getAIStatus, triggerPuterGuestOnce } from '../utils/puterAI';
 import { getLocalFallbackChat } from '../utils/offlineKnowledgeBase'; // for rare catch-path rich fallback
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
@@ -105,7 +105,8 @@ export default function AIChatPlanner() {
       else if (s.status === 'offline-kb') base = `AI: Offline KB Active (rich fallback)`;
       else if (s.status === 'cleared') base = `AI: Cache cleared — retry next msg`;
       const arch = profile.culinaryArchetype || 'standard';
-      setAiStatusLabel(`${base} • ${arch}`);
+      const archLabel = arch === 'biohacker' ? 'Biohacker' : arch === 'cognitive' ? 'Cognitive' : 'Classic';
+      setAiStatusLabel(`${base} • ${archLabel}`);
     } catch (e) {
       setAiStatusLabel('AI: Status check failed (KB ready)');
     }
@@ -297,13 +298,16 @@ export default function AIChatPlanner() {
     const text = textToSend || input;
     if (!text.trim()) return;
 
-    // Trigger guest auth check on send button click if not authenticated
-    if (window.puter && window.puter.auth && !window.puter.auth.isSignedIn()) {
-      try {
-        await window.puter.auth.signIn({ attempt_temp_user_creation: true });
-      } catch (err) {
-        console.warn("Guest sign-in on send click failed:", err);
-      }
+    // ONE-TIME random guest token trigger (researched Puter technique).
+    // Uses attempt_temp_user_creation exactly once from the first user gesture ("Ask Nani").
+    // Creates random temp/guest session automatically (no full login). 
+    // Subsequent sends use the session + harvested token for REST — no repeated prompts.
+    // If it fails or user dismisses, we transparently fall back to excellent local RAG + archetype KB.
+    try {
+      await triggerPuterGuestOnce();
+    } catch (e) {
+      // Non-fatal: guest is optional for higher quota; RAG is the reliable core.
+      console.warn('Puter guest one-time init note:', e);
     }
 
     setInput('');
@@ -426,6 +430,17 @@ export default function AIChatPlanner() {
                     style={{ marginLeft: '8px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: 'transparent', color: '#E8692A', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Clear
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      const activated = await triggerPuterGuestOnce();
+                      refreshAIStatusLabel();
+                      setToastMessage(activated ? 'Guest AI activated (random temp token)' : 'Guest via local RAG');
+                      setTimeout(() => setToastMessage(''), 3200);
+                    }}
+                    style={{ marginLeft: '6px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: '#FEF3DC', color: '#C4501A', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Boost
                   </button>
                 </div>
                 <span style={styles.statusLabel}>

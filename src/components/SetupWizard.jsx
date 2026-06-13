@@ -34,12 +34,10 @@ export default function SetupWizard() {
   };
 
   const handleBypassLogin = () => {
-    // Attempt silent guest sign in on completion of onboarding wizard (user click event)
-    if (window.puter && window.puter.auth && !window.puter.auth.isSignedIn()) {
-      window.puter.auth.signIn({ attempt_temp_user_creation: true }).catch(err => {
-        console.warn("Guest session failed to initialize:", err);
-      });
-    }
+    // No login/guest prompt on "Start". 
+    // The researched one-time random guest token (attempt_temp_user_creation) is triggered 
+    // exactly once later on the user's first "Ask Nani" gesture in chat (see AIChatPlanner + puterAI.triggerPuterGuestOnce).
+    // This prevents "login on every step". All core features (RAG, archetypes, map, plans) work immediately with local intelligence.
 
     // Finalize and seed the weekly meal plan!
     const initialPlan = seedWeeklyMenu(formData);
@@ -182,8 +180,8 @@ export default function SetupWizard() {
             <div style={styles.verticalList}>
               {[
                 { id: 'standard', name: 'Classic', desc: 'Timeless regional home cooking.' },
-                { id: 'biohacker', name: "European VC's Wife (Bio-Hacker)", desc: 'Low glycemic. Clean. Zen.' },
-                { id: 'cognitive', name: 'Shark Tank Judge (Cognitive Hustler)', desc: 'High protein. Brain fuel. Bold.' }
+                { id: 'biohacker', name: 'Biohacker', desc: 'Low glycemic. Clean. Zen.' },
+                { id: 'cognitive', name: 'Cognitive', desc: 'High protein. Brain fuel. Bold.' }
               ].map(opt => (
                 <button
                   key={opt.id}
