@@ -294,6 +294,7 @@ const OFFLINE_RECIPES = {
   }
 };
 
+export { OFFLINE_RECIPES };
 /**
  * 🗺️ Layer 5 Fallback: Region-Matched Recipe Engine (archetype-aware for bio/cognitive variants)
  */
