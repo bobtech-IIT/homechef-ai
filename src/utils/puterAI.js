@@ -44,10 +44,10 @@ const GROQ_MODELS = [
 ];
 
 const GEMINI_FREE_MODELS = [
-  'gemini-2.0-flash-exp',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3.1-pro',
+  'gemini-1.5-flash-latest',
 ];
 
 // ─── Queue & Status ───────────────────────────────────────────────────────────
@@ -279,6 +279,22 @@ const callPuterREST = async () => {
 };
 
 const callPuterWithMessages = async (messages, attempt = 1) => {
+  // Silently generate a guest token if we don't have one
+  try {
+    if (typeof window !== 'undefined' && window.puter?.auth) {
+      const existingToken = localStorage.getItem('puter.auth.token.v2') || 
+                            localStorage.getItem('puter.auth.token') || 
+                            window.puter.authToken;
+      if (!existingToken && !window.puter.auth.isSignedIn()) {
+        console.log('🔄 Headless PWA: Silently generating guest token...');
+        await window.puter.auth.signIn({ attempt_temp_user_creation: true });
+        console.log('✅ Headless PWA: Guest token generated.');
+      }
+    }
+  } catch (e) {
+    console.warn('Puter guest token auto-creation failed:', e);
+  }
+
   const headers = await callPuterREST();
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);

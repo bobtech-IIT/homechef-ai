@@ -134,7 +134,7 @@ export default function WeeklyPlanner() {
             <div key={meal.key} style={styles.mealCard} className="glass-card animate-pop">
               <div style={styles.mealHeader}>
                 <span style={styles.mealLabel}>{meal.label.toUpperCase()}</span>
-                <span style={styles.mealDietTag} style={{ color: plannedMeal.isVegetarian ? '#0D6E4E' : '#C0392B' }}>
+                <span style={{ ...styles.mealDietTag, color: plannedMeal.isVegetarian ? '#0D6E4E' : '#C0392B' }}>
                   {plannedMeal.isVegetarian ? '🌱 VEG' : '🍗 NON-VEG'}
                 </span>
               </div>
@@ -182,7 +182,7 @@ export default function WeeklyPlanner() {
                 {selectedRecipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
               </ul>
 
-              <h4 style={styles.accordionHeader} style={{ marginTop: '16px' }}>👩‍🍳 Steps</h4>
+              <h4 style={{ ...styles.accordionHeader, marginTop: '16px' }}>👩‍🍳 Steps</h4>
               <ol style={styles.stepsList}>
                 {selectedRecipe.steps.map((st, i) => <li key={i}>{st}</li>)}
               </ol>

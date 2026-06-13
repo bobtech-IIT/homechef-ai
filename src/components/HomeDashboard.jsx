@@ -208,7 +208,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
       <div style={styles.thaliBanner} className="glass-card animate-pop" onClick={onOpenThaliMap}>
         <div style={styles.thaliBannerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={styles.thaliTag}>36 STATES • RAG POWERED</span>
+            <span style={styles.thaliTag}>36 STATES • THE GREAT INDIAN THALI</span>
           </div>
           <h3 className="text-serif" style={styles.thaliTitle}>Open the Thali Map</h3>
           <p style={styles.thaliDesc}>
@@ -337,7 +337,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
                 {selectedRecipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
               </ul>
 
-              <h4 style={styles.accordionHeader} style={{ marginTop: '16px' }}>👩‍🍳 Steps</h4>
+              <h4 style={{ ...styles.accordionHeader, marginTop: '16px' }}>👩‍🍳 Steps</h4>
               <ol style={styles.stepsList}>
                 {selectedRecipe.steps.map((st, i) => <li key={i}>{st}</li>)}
               </ol>
@@ -389,22 +389,25 @@ const styles = {
     marginTop: '6px'
   },
   greetingBanner: {
-    background: 'linear-gradient(135deg, #221208 0%, #3D1E0C 100%)',
-    color: '#FDF8F2',
+    background: 'linear-gradient(135deg, #F9EAD9 0%, #FEF3DC 100%)',
+    color: '#1A0E08',
     padding: '24px',
     borderRadius: '20px',
     marginBottom: '28px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+    boxShadow: '0 8px 24px rgba(74, 44, 26, 0.05)',
+    border: '1px solid rgba(74, 44, 26, 0.1)'
   },
   greetingTitle: {
     fontSize: '24px',
     fontWeight: '800',
-    marginBottom: '6px'
+    marginBottom: '6px',
+    color: '#1A0E08'
   },
   greetingDesc: {
     fontSize: '14px',
     lineHeight: '1.4',
-    opacity: 0.85
+    color: '#1A0E08',
+    fontWeight: '600'
   },
   sectionHeader: {
     display: 'flex',

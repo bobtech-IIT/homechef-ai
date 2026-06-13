@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import WeeklyPlanner from './WeeklyPlanner';
 import { useApp } from '../context/AppContext';
 
-const REGIONS = ['All', 'Bangladesh', 'Kolkata', 'Gujarat', 'Punjab', 'Maharashtra', 'Odisha', 'Tamil Nadu', 'Kerala'];
+const REGIONS = ['All', 'Saved (AI)', 'Bangladesh', 'Kolkata', 'Gujarat', 'Punjab', 'Maharashtra', 'Odisha', 'Tamil Nadu', 'Kerala'];
 
 export default function GrandmotherVault() {
   const { state, dispatch } = useApp();
@@ -14,7 +14,17 @@ export default function GrandmotherVault() {
   const [activeNuskhe, setActiveNuskhe] = useState(null);
   const [nuskheCategory, setNuskheCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [customRecipes, setCustomRecipes] = useState([]);
   
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('homechef_custom_recipes');
+      if (raw) setCustomRecipes(JSON.parse(raw));
+    } catch (e) {
+      console.warn('Failed to load custom recipes in Vault:', e);
+    }
+  }, [subTab]);
+
   const handleNuskheSearch = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -25,8 +35,10 @@ export default function GrandmotherVault() {
   const [selectedMealSlot, setSelectedMealSlot] = useState('lunch');
 
   const filteredRecipes = selectedRegion === 'All'
-    ? GRANDMOTHER_RECIPES
-    : GRANDMOTHER_RECIPES.filter(r => r.region.toLowerCase() === selectedRegion.toLowerCase());
+    ? [...customRecipes, ...GRANDMOTHER_RECIPES]
+    : selectedRegion === 'Saved (AI)'
+      ? customRecipes
+      : GRANDMOTHER_RECIPES.filter(r => r.region.toLowerCase() === selectedRegion.toLowerCase());
 
   const filteredNuskhe = HEALTH_DRINKS.filter(hd => {
     // 1. Tab category filter
@@ -361,7 +373,7 @@ export default function GrandmotherVault() {
                 ))}
               </ul>
 
-              <h4 style={styles.contentTitle} style={{ marginTop: '20px' }}>👩‍🍳 Vidhi (Cooking Steps):</h4>
+              <h4 style={{ ...styles.contentTitle, marginTop: '20px' }}>👩‍🍳 Vidhi (Cooking Steps):</h4>
               <ol style={styles.stepsList}>
                 {activeRecipe.steps.map((step, idx) => (
                   <li key={idx} style={styles.listItem}>{step}</li>
@@ -452,7 +464,7 @@ export default function GrandmotherVault() {
                 ))}
               </ul>
 
-              <h4 style={styles.contentTitle} style={{ marginTop: '20px' }}>👩‍🍳 Preparation Method (Bane Ka Tarika):</h4>
+              <h4 style={{ ...styles.contentTitle, marginTop: '20px' }}>👩‍🍳 Preparation Method (Bane Ka Tarika):</h4>
               <ol style={styles.stepsList}>
                 {activeNuskhe.recipe.map((step, idx) => (
                   <li key={idx} style={styles.listItem}>{step}</li>

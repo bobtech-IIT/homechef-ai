@@ -36,7 +36,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
     gemini: {
       label: 'Google Gemini (Free)',
       placeholder: 'AIza...',
-      hint: 'Auto-detects free model: gemini-2.0-flash → 1.5-flash → 1.5-flash-8b',
+      hint: 'Auto-detects free model: gemini-3.5-flash → 3.1-flash-lite → 3.1-pro',
       url: 'https://aistudio.google.com/apikey',
     },
   };

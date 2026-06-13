@@ -5,7 +5,7 @@ import { getLocalFallbackChat } from '../utils/offlineKnowledgeBase'; // for rar
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
-import { retrieveRelevantKnowledge, formatRAGContext } from '../utils/offlineRAG'; // the offline RAG engine — pure client-side, profile + archetype + inventory aware retrieval. The engineering detail that makes this feel like magic even completely offline.
+import { retrieveRelevantKnowledge, formatRAGContext, saveCustomRAGChunk } from '../utils/offlineRAG'; // the offline RAG engine — pure client-side, profile + archetype + inventory aware retrieval. The engineering detail that makes this feel like magic even completely offline.
 
 // High-fidelity structured text formatter for Nani's Hinglish responses
 const renderMessageText = (text) => {
@@ -246,6 +246,22 @@ export default function AIChatPlanner() {
       const response = await queryAI(promptWithHistory, systemInstruction, 'gpt-4o-mini');
       const naniMsg = { sender: 'nani', text: response, timestamp: Date.now() };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: naniMsg });
+      
+      // Auto-save recipe to offline RAG chunks
+      if (containsRecipeIndicators(response)) {
+        let dishName = "Nani's AI Recipe";
+        const firstLines = response.split('\n')[0].trim();
+        if (firstLines.length > 5 && firstLines.length < 50) {
+          dishName = firstLines.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+        }
+        saveCustomRAGChunk(
+          dishName, 
+          response, 
+          profile.regionalPalate || 'Indian', 
+          !(profile?.dietType || 'Vegetarian 🌱').toLowerCase().includes('non-') ? 'veg' : 'nonveg'
+        );
+      }
+      
       // Update visible status after real or KB response
       setTimeout(refreshAIStatusLabel, 50);
     } catch (e) {

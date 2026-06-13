@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Search, Sparkles, MapPin, ChefHat, Compass } from 'lucide-react';
+import { queryAI } from '../utils/puterAI';
 
 const THALI_DATA = {
   // States (28)
@@ -119,19 +120,69 @@ const STATE_COORDINATES = {
   "Mizoram": { top: '38%', left: '90%' },
   "Nagaland": { top: '28%', left: '94%' },
   "Tripura": { top: '36%', left: '86%' }
-};
-
-export default function IndianThaliMap({ onClose, onSelectRecipe }) {
+};export default function IndianThaliMap({ onClose, onSelectRecipe }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedState, setSelectedState] = useState(null);
   const [activeZone, setActiveZone] = useState(null);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [isUpdatingDish, setIsUpdatingDish] = useState(false);
+
+  // Load and merge dynamic thali dishes from localStorage
+  const [thaliData, setThaliData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('homechef_dynamic_thali_data');
+      if (saved) {
+        return { ...THALI_DATA, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.warn('Failed to load dynamic thali data:', e);
+    }
+    return THALI_DATA;
+  });
+
+  const fetchLiveDish = async (stateName) => {
+    setIsUpdatingDish(true);
+    const prompt = `Identify the single most iconic, authentic traditional famous dish of the Indian state/UT "${stateName}".
+    Return ONLY a raw JSON block with this exact format:
+    {
+      "dish": "Dish Name",
+      "tags": ["TAG1", "TAG2"],
+      "desc": "Short 1-2 sentence description of why it is iconic and how it tastes."
+    }
+    Do not output any markdown code blocks, backticks, or explanation. Just the raw JSON.`;
+
+    try {
+      const response = await queryAI(prompt, "You are a helpful culinary researcher who returns pure JSON.");
+      let cleanText = response.trim();
+      if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
+      }
+      const parsed = JSON.parse(cleanText);
+      if (parsed && parsed.dish && parsed.desc) {
+        const updated = {
+          ...thaliData,
+          [stateName]: {
+            dish: parsed.dish,
+            tags: (parsed.tags || ["FAMOUS", "TRADITIONAL"]).map(t => t.toUpperCase()),
+            desc: parsed.desc
+          }
+        };
+        setThaliData(updated);
+        localStorage.setItem('homechef_dynamic_thali_data', JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.warn('Failed to fetch dynamic dish for', stateName, e);
+    } finally {
+      setIsUpdatingDish(false);
+    }
+  };
 
   const handleStateClick = (stateName) => {
     setSelectedState(stateName);
     setIsZoomed(true);
+    // Fetch live famous dish dynamically when selected
+    fetchLiveDish(stateName);
   };
-
   const handleBackToMap = () => {
     setIsZoomed(false);
     setTimeout(() => setSelectedState(null), 300);
@@ -139,16 +190,16 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
 
   const handleHungryClick = () => {
     if (selectedState) {
-      const data = THALI_DATA[selectedState];
+      const data = thaliData[selectedState];
       onSelectRecipe(data.dish);
       onClose();
     }
   };
 
   // Filter states based on search query
-  const filteredStates = Object.keys(THALI_DATA).filter(state =>
+  const filteredStates = Object.keys(thaliData).filter(state =>
     state.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    THALI_DATA[state].dish.toLowerCase().includes(searchQuery.toLowerCase())
+    thaliData[state].dish.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Dynamic Map Transform calculation
@@ -359,12 +410,12 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                   {selectedState} SPECIALTY
                 </span>
                 <h3 style={styles.detailCardTitle}>
-                  {THALI_DATA[selectedState].dish}
+                  {thaliData[selectedState].dish} {isUpdatingDish && <span style={{ fontSize: '10px', color: '#E8692A', verticalAlign: 'middle', marginLeft: '6px' }} className="animate-pulse">✨ Live loading...</span>}
                 </h3>
               </div>
 
               <div style={{ display: 'flex', gap: '4px' }}>
-                {THALI_DATA[selectedState].tags.map(tag => (
+                {thaliData[selectedState].tags.map(tag => (
                   <span key={tag} style={styles.detailTag}>
                     {tag}
                   </span>
@@ -373,7 +424,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
             </div>
 
             <p style={styles.detailDesc}>
-              "{THALI_DATA[selectedState].desc}"
+              "{thaliData[selectedState].desc}"
             </p>
 
             {/* Action Buttons */}
@@ -437,7 +488,7 @@ export default function IndianThaliMap({ onClose, onSelectRecipe }) {
                     
                     <div style={styles.statesGrid}>
                       {zoneStates.map(state => {
-                        const data = THALI_DATA[state];
+                        const data = thaliData[state];
                         const isUT = ["Jammu and Kashmir", "Ladakh", "Chandigarh", "Delhi (NCT)", "Puducherry", "Lakshadweep", "Dadra and Nagar Haveli and Daman and Diu", "Andaman and Nicobar Islands"].includes(state);
                         
                         return (
