@@ -14,7 +14,8 @@ export default function SetupWizard() {
     regionalPalate: 'general',
     dietType: 'Vegetarian 🌱',
     occasions: [],
-    cuisineInterests: []
+    cuisineInterests: [],
+    culinaryArchetype: 'standard'
   });
 
   // Gujarati Veg Lock: force diet to Vegetarian if Gujarati palate selected
@@ -169,35 +170,37 @@ export default function SetupWizard() {
         {step === 4 && (
           <div>
             <span style={styles.stepNum}>STEP 4 OF 5</span>
-            <h2 className="text-serif" style={styles.title}>Allergens & Preferences</h2>
-            <p style={styles.desc}>We will flag ingredients matching these allergens in the main dashboard.</p>
-            <div style={styles.tagCloud}>
-              {ALLERGENS.map(alg => {
-                const isSelected = formData.occasions.includes(alg);
-                return (
-                  <button
-                    key={alg}
-                    style={{
-                      ...styles.tagBtn,
-                      background: isSelected ? '#C0392B' : '#fff',
-                      color: isSelected ? '#fff' : '#1A0E08',
-                      borderColor: isSelected ? '#C0392B' : 'rgba(74, 44, 26, 0.1)'
-                    }}
-                    onClick={() => toggleSelection('occasions', alg)}
-                  >
-                    {alg}
-                  </button>
-                );
-              })}
+            <h2 className="text-serif" style={styles.title}>Culinary Archetype</h2>
+            <p style={styles.desc}>Select an archetype to dynamically transform all ingredients, spice levels, and presentation aesthetics.</p>
+            <div style={styles.verticalList}>
+              {[
+                { id: 'standard', name: 'Standard Household Mode 🏠', desc: 'Standard regional recipe preparation.' },
+                { id: 'biohacker', name: 'European VC\'s Wife (Bio-Hacker) 🌿', desc: 'Low glycemic, adaptogenic, extra virgin oils, zen plating.' },
+                { id: 'cognitive', name: 'Shark Tank Judge (Cognitive Hustler) 🔥', desc: 'Ragi/quinoa base, high protein, Brahmi ghee, dramatic plating.' }
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  style={{
+                    ...styles.archetypeBtn,
+                    borderColor: formData.culinaryArchetype === opt.id ? '#E8692A' : 'rgba(74, 44, 26, 0.1)',
+                    background: formData.culinaryArchetype === opt.id ? '#FEF3DC' : '#fff'
+                  }}
+                  onClick={() => setFormData({ ...formData, culinaryArchetype: opt.id })}
+                >
+                  <div style={styles.archetypeTitle}>{opt.name}</div>
+                  <div style={styles.archetypeDesc}>{opt.desc}</div>
+                </button>
+              ))}
             </div>
           </div>
         )}
 
         {step === 5 && (
-          <div>
+          <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
             <span style={styles.stepNum}>STEP 5 OF 5</span>
-            <h2 className="text-serif" style={styles.title}>Cuisine Interests</h2>
-            <p style={styles.desc}>What kinds of food does your family love to cook at home?</p>
+            <h2 className="text-serif" style={styles.title}>Preferences & Interests</h2>
+            
+            <p style={styles.label}>Cuisine Interests</p>
             <div style={styles.tagCloud}>
               {CUISINES.map(c => {
                 const isSelected = formData.cuisineInterests.includes(c);
@@ -213,6 +216,27 @@ export default function SetupWizard() {
                     onClick={() => toggleSelection('cuisineInterests', c)}
                   >
                     {c}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p style={{ ...styles.label, marginTop: '20px' }}>Allergens to Flag</p>
+            <div style={styles.tagCloud}>
+              {ALLERGENS.map(alg => {
+                const isSelected = formData.occasions.includes(alg);
+                return (
+                  <button
+                    key={alg}
+                    style={{
+                      ...styles.tagBtn,
+                      background: isSelected ? '#C0392B' : '#fff',
+                      color: isSelected ? '#fff' : '#1A0E08',
+                      borderColor: isSelected ? '#C0392B' : 'rgba(74, 44, 26, 0.1)'
+                    }}
+                    onClick={() => toggleSelection('occasions', alg)}
+                  >
+                    {alg}
                   </button>
                 );
               })}
@@ -411,5 +435,28 @@ const styles = {
     cursor: 'pointer',
     marginTop: '18px',
     textDecoration: 'underline'
+  },
+  archetypeBtn: {
+    width: '100%',
+    padding: '16px',
+    borderRadius: '16px',
+    border: '1px solid',
+    textAlign: 'left',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    marginBottom: '8px'
+  },
+  archetypeTitle: {
+    fontSize: '15px',
+    fontWeight: '800',
+    color: '#1A0E08'
+  },
+  archetypeDesc: {
+    fontSize: '12.5px',
+    color: '#7A5540',
+    lineHeight: '1.4'
   }
 };

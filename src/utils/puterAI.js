@@ -90,51 +90,25 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * Puter API Caller with Retries
  */
 const callPuterAPI = async (prompt, systemInstruction, model, attempt = 1) => {
+  if (!window.puter || !window.puter.ai) {
+    throw new Error('Puter SDK not initialized or available');
+  }
+
   try {
     const selectedModel = model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini';
-    console.log(`🤖 PuterAI calling ${selectedModel} via REST API (Attempt ${attempt}/${MAX_RETRIES})...`);
+    console.log(`🤖 PuterAI calling SDK ${selectedModel} (Attempt ${attempt}/${MAX_RETRIES})...`);
     
-    let token = null;
-    if (typeof window !== "undefined") {
-      token = localStorage.getItem("puter.auth.token.v2") || 
-              (window.puter && window.puter.authToken);
-    }
+    const fullQuery = systemInstruction 
+      ? `System Instructions:\n${systemInstruction}\n\nUser Query:\n${prompt}`
+      : prompt;
 
-    const headers = {
-      "Content-Type": "application/json",
-    };
+    const result = await window.puter.ai.chat(fullQuery, { model: selectedModel });
     
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+    if (!result || !result.message || !result.message.content) {
+      throw new Error('Invalid or empty response from Puter AI');
     }
 
-    const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [
-          { role: "system", content: systemInstruction || "You are a helpful assistant." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.2,
-      }),
-    });
-
-    if (response.status === 402) {
-      throw new Error("insufficient_funds");
-    }
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Puter AI Error ${response.status}: ${errText}`);
-    }
-
-    const data = await response.json();
-    if (data && data.choices && data.choices[0] && data.choices[0].message) {
-      return data.choices[0].message.content;
-    }
-    throw new Error("Invalid response format from Puter AI REST API");
+    return result.message.content;
   } catch (err) {
     console.error(`PuterAI attempt ${attempt} failed:`, err);
     

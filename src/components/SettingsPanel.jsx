@@ -49,9 +49,9 @@ export default function SettingsPanel({ isOpen, onClose }) {
         <div style={styles.profileCard}>
           <div style={styles.avatar}>🏡</div>
           <div style={styles.profileInfo}>
-            <h3 style={styles.profileName}>{profile.familyName || 'Sharma'} Family</h3>
+            <h3 style={styles.profileName}>{(profile?.familyName || 'Sharma')} Family</h3>
             <span style={styles.profileDetails}>
-              {profile.regionalPalate.toUpperCase()} Cuisine • {profile.dietType}
+              {(profile?.regionalPalate || 'general').toUpperCase()} Cuisine • {profile?.dietType || 'Vegetarian 🌱'}
             </span>
           </div>
         </div>

@@ -62,7 +62,7 @@ const renderMoodText = (text) => {
 
 export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const { state } = useApp();
-  const { profile, weeklyPlan, nutritionScore } = state;
+  const { profile = {}, weeklyPlan = {}, nutritionScore = {} } = state;
   const [greeting, setGreeting] = useState('Namaste! 👋');
   const [greetingSub, setGreetingSub] = useState('Ready to cook something swadisht?');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
@@ -89,8 +89,9 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
 
   // Deterministic and dietary-compliant Recipe of the Day that rotates uniquely every day
   const getRecipeOfDay = () => {
-    const isVegOnly = profile.dietType.includes('Vegetarian') || profile.dietType.includes('Jain');
-    const palate = profile.regionalPalate.toLowerCase();
+    const dietType = profile?.dietType || 'Vegetarian 🌱';
+    const isVegOnly = !dietType.toLowerCase().includes('non-');
+    const palate = (profile?.regionalPalate || 'general').toLowerCase();
     
     let eligible = GRANDMOTHER_RECIPES.filter(recipe => {
       // 1. Enforce vegetarian restriction if required
@@ -107,7 +108,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
     let regionalMatched = eligible.filter(recipe => recipe.region.toLowerCase() === palate);
     
     // 4. For Non-Vegetarian diet, prioritize non-veg dishes in the regional pool if available
-    if (profile.dietType.includes('Non-Vegetarian') && !isVegOnly) {
+    if (profile?.dietType?.includes('Non-Vegetarian') && !isVegOnly) {
       const nonVegRegional = regionalMatched.filter(r => !r.isVegetarian);
       if (nonVegRegional.length > 0) {
         regionalMatched = nonVegRegional;
@@ -119,7 +120,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
       }
     }
 
-    const finalPool = regionalMatched.length > 0 ? regionalMatched : eligible;
+    const finalPool = regionalMatched.length > 0 ? regionalMatched : (eligible.length > 0 ? eligible : GRANDMOTHER_RECIPES);
 
     // Create a highly dynamic rotating seed combining date, day of week, and month
     const today = new Date();
@@ -153,8 +154,8 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
       <div style={styles.greetingHeader}>
         <div style={styles.headerInfo}>
           <span style={styles.familyTag} className="text-micro">FAMILY ACCOUNT</span>
-          <h1 className="text-serif" style={styles.familyName}>{profile.familyName ? `${profile.familyName} Family` : 'Ghar Ki Rasoi'}</h1>
-          <span style={styles.profileBadge}>{profile.regionalPalate.toUpperCase()} • {profile.dietType}</span>
+          <h1 className="text-serif" style={styles.familyName}>{profile?.familyName ? `${profile.familyName} Family` : 'Ghar Ki Rasoi'}</h1>
+          <span style={styles.profileBadge}>{(profile?.regionalPalate || 'general').toUpperCase()} • {profile?.dietType || 'Vegetarian 🌱'}</span>
         </div>
       </div>
 

@@ -70,7 +70,7 @@ const renderMessageText = (text) => {
 
 export default function AIChatPlanner() {
   const { state, dispatch } = useApp();
-  const { profile, chatHistory, inventory } = state;
+  const { profile = {}, chatHistory = [], inventory = [] } = state;
   
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -313,9 +313,9 @@ export default function AIChatPlanner() {
         newMeal: {
           id: `ai_custom_${index}`,
           name: dishName,
-          isVegetarian: profile.dietType.toLowerCase().includes('veg') || profile.regionalPalate === 'gujarat',
+          isVegetarian: !(profile?.dietType || 'Vegetarian 🌱').toLowerCase().includes('non-') || (profile?.regionalPalate || 'general') === 'gujarat',
           category: selectedMeal,
-          region: profile.regionalPalate || 'Indian',
+          region: profile?.regionalPalate || 'Indian',
           ingredients: ['Ingredients suggested in Nani\'s chat'],
           steps: recipeSteps
         }

@@ -87,7 +87,7 @@ export const seedWeeklyMenu = (profile) => {
   // Strict lock checks
   const isGujarati = targetPalate === 'gujarat';
   const isVegan = dietType.toLowerCase().includes('vegan');
-  const isStrictVeg = isVegan || isGujarati || dietType.toLowerCase().includes('veg');
+  const isStrictVeg = isVegan || isGujarati || !dietType.toLowerCase().includes('non-');
 
   // Filter regional & international recipes by vegetarian lock
   const filterVeg = (recipeList) => {

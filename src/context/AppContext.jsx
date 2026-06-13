@@ -103,7 +103,18 @@ export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE, () => {
     try {
       const savedState = localStorage.getItem('homechef_v3_state');
-      return savedState ? JSON.parse(savedState) : INITIAL_STATE;
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        return {
+          ...INITIAL_STATE,
+          ...parsed,
+          profile: {
+            ...INITIAL_STATE.profile,
+            ...(parsed.profile || {})
+          }
+        };
+      }
+      return INITIAL_STATE;
     } catch (e) {
       console.warn('LocalStorage load failed, using defaults:', e);
       return INITIAL_STATE;

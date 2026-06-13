@@ -13,7 +13,7 @@ const MEALS = [
 
 export default function WeeklyPlanner() {
   const { state, dispatch } = useApp();
-  const { profile, weeklyPlan } = state;
+  const { profile = {}, weeklyPlan = {} } = state;
   
   // Get short code for current day (e.g. "MON")
   const currentShortDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -25,8 +25,8 @@ export default function WeeklyPlanner() {
 
   // Dynamic swap logic using actual region/diet matched recipe pool
   const handleSwapMeal = (mealType) => {
-    const isGujarati = profile.regionalPalate.toLowerCase() === 'gujarat';
-    const isStrictVeg = isGujarati || profile.dietType.toLowerCase().includes('veg');
+    const isGujarati = (profile?.regionalPalate || 'general').toLowerCase() === 'gujarat';
+    const isStrictVeg = isGujarati || !(profile?.dietType || 'Vegetarian 🌱').toLowerCase().includes('non-');
 
     const filterVeg = (list) => isStrictVeg ? list.filter(r => r.isVegetarian) : list;
     
