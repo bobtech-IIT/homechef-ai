@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Component } from 'react';
 import { useApp } from './context/AppContext';
 import SplashScreen from './components/SplashScreen';
 import SetupWizard from './components/SetupWizard';
@@ -9,6 +9,44 @@ import InventoryManager from './components/InventoryManager';
 import GrandmotherVault from './components/GrandmotherVault';
 import SettingsPanel from './components/SettingsPanel';
 import IndianThaliMap from './components/IndianThaliMap';
+
+// Simple production ErrorBoundary to prevent total blank screen on runtime errors (e.g. unexpected data shape, 3rd party script timing).
+// Shows a minimal recovery UI + reload instead of white screen of death.
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('HomeChef App ErrorBoundary caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center', color: '#1A0E08', background: '#FDF8F2', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <h2 style={{ fontSize: 22, marginBottom: 12 }}>Something went wrong in the kitchen.</h2>
+          <p style={{ color: '#7A5540', marginBottom: 20 }}>Nani's app hit a snag (check console for details). Your recipes &amp; plans are safe in local storage.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ background: '#E8692A', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Reload HomeChef AI
+          </button>
+          <button 
+            onClick={() => { localStorage.clear(); window.location.reload(); }} 
+            style={{ marginTop: 12, background: 'transparent', color: '#C4501A', border: '1px solid #C4501A', padding: '10px 20px', borderRadius: 12, cursor: 'pointer' }}
+          >
+            Reset All Data &amp; Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const { state, dispatch } = useApp();
@@ -36,15 +74,16 @@ export default function App() {
 
   // 1. Splash Screen Loader Screen
   if (showSplash) {
-    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+    return <ErrorBoundary><SplashScreen onComplete={() => setShowSplash(false)} /></ErrorBoundary>;
   }
 
   // 2. First-time Setup Wizard if Profile not complete
   if (!profile.isSetupComplete) {
-    return <SetupWizard />;
+    return <ErrorBoundary><SetupWizard /></ErrorBoundary>;
   }
 
   return (
+    <ErrorBoundary>
     <div style={styles.appShell}>
       {/* Premium Top Navigation Header */}
       <header style={styles.topBar} className="glass-panel">
@@ -112,6 +151,7 @@ export default function App() {
       {/* Settings Modal Slider Panel */}
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
+    </ErrorBoundary>
   );
 }
 

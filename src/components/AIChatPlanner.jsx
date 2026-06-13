@@ -79,9 +79,6 @@ export default function AIChatPlanner() {
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const showLoginPrompt = false;
-  const handlePuterLogin = () => {};
-
   const [selectedMsgIndex, setSelectedMsgIndex] = useState(null);
   const [selectedDay, setSelectedDay] = useState('MON');
   const [selectedMeal, setSelectedMeal] = useState('lunch');
