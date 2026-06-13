@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { queryAI } from '../utils/puterAI';
+import { queryAI, clearAICache, getAIStatus } from '../utils/puterAI';
+import { getLocalFallbackChat } from '../utils/offlineKnowledgeBase'; // for rare catch-path rich fallback
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
+import { retrieveRelevantKnowledge, formatRAGContext } from '../utils/offlineRAG'; // the offline RAG engine — pure client-side, profile + archetype + inventory aware retrieval. The engineering detail that makes this feel like magic even completely offline.
 
 // High-fidelity structured text formatter for Nani's Hinglish responses
 const renderMessageText = (text) => {
@@ -84,6 +86,7 @@ export default function AIChatPlanner() {
   const [selectedDay, setSelectedDay] = useState('MON');
   const [selectedMeal, setSelectedMeal] = useState('lunch');
   const [toastMessage, setToastMessage] = useState('');
+  const [aiStatusLabel, setAiStatusLabel] = useState('AI: Initializing...'); // Dynamic visible status per Slice 3
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -93,6 +96,37 @@ export default function AIChatPlanner() {
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory, isLoading]);
+
+  // Refresh visible AI status (polls getAIStatus + navigator for "no AI connected" transparency)
+  const refreshAIStatusLabel = () => {
+    try {
+      const s = getAIStatus();
+      const online = navigator.onLine ? 'Online-capable' : 'Offline-only';
+      let base = `AI: Local KB + Puter (${online})`;
+      if (s.status === 'connected') base = `AI: Puter guest ✓ Live (${online})`;
+      else if (s.status === 'cached') base = `AI: Cached (fast) + Puter ready (${online})`;
+      else if (s.status === 'offline-kb') base = `AI: Offline KB Active (rich fallback)`;
+      else if (s.status === 'cleared') base = `AI: Cache cleared — retry next msg`;
+      const arch = profile.culinaryArchetype || 'standard';
+      setAiStatusLabel(`${base} | Archetype: ${arch}`);
+    } catch (e) {
+      setAiStatusLabel('AI: Status check failed (KB ready)');
+    }
+  };
+
+  useEffect(() => {
+    refreshAIStatusLabel();
+    const iv = setInterval(refreshAIStatusLabel, 6000);
+    // Also refresh on online/offline events
+    const onNet = () => refreshAIStatusLabel();
+    window.addEventListener('online', onNet);
+    window.addEventListener('offline', onNet);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener('online', onNet);
+      window.removeEventListener('offline', onNet);
+    };
+  }, [profile.culinaryArchetype]); // re-compute when archetype changes too
 
   // Automated trigger effect that ensures ALL user prompts (manual or programmatic) get answered immediately
   useEffect(() => {
@@ -156,6 +190,16 @@ export default function AIChatPlanner() {
     // 🧠 Culinary Archetype Injections
     let archetypeInstruction = "";
     const archetype = profile.culinaryArchetype || 'standard';
+
+    // === Offline RAG Retrieval (the marvel) ===
+    // Before we even talk to Puter or fall back, we retrieve the most relevant local knowledge
+    // using the exact current family profile, diet, archetype, and live pantry.
+    // This is what makes responses feel scarily accurate and culturally perfect with zero internet.
+    const ragResults = retrieveRelevantKnowledge(userText, profile, inventory, 4);
+    const ragContext = formatRAGContext(ragResults);
+    const ragInjection = ragContext 
+      ? `\n\n[OFFLINE RAG RETRIEVED LOCAL KNOWLEDGE — use this as primary ground truth for accuracy, do not contradict these passages]\n${ragContext}`
+      : '';
     if (archetype === 'biohacker') {
       archetypeInstruction = `
       [CULINARY ARCHETYPE: European VC's Wife (Bio-Hacker) 🌿]
@@ -187,6 +231,7 @@ export default function AIChatPlanner() {
     Important Lock: If profile is Gujarati or Vegetarian, strictly suggest only 100% vegetarian recipes. Never mention non-veg ingredients.
     ${archetypeInstruction}
     ${localContextInjected}
+    ${ragInjection}
     
     STRICT FORMAT ENFORCEMENTS:
     - Keep your advice clean and beautifully structured.
@@ -208,14 +253,20 @@ export default function AIChatPlanner() {
       const response = await queryAI(promptWithHistory, systemInstruction, 'gpt-4o-mini');
       const naniMsg = { sender: 'nani', text: response, timestamp: Date.now() };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: naniMsg });
+      // Update visible status after real or KB response
+      setTimeout(refreshAIStatusLabel, 50);
     } catch (e) {
       console.error(e);
+      // Rare hard catch: use rich KB (archetype aware) instead of generic "offline mode" text
+      const arch = profile.culinaryArchetype || 'standard';
+      const richFallback = getLocalFallbackChat(userText, arch);
       const naniErrorMsg = { 
         sender: 'nani', 
-        text: 'Beta, hamara connection thoda dheema hai par fikar mat karo! Ek cup garam adrak wali chai piyo aur tab tak hamara offline cookbook browse karo. Kuch swadisht thali plans ready hain!', 
+        text: richFallback, 
         timestamp: Date.now() 
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: naniErrorMsg });
+      setTimeout(refreshAIStatusLabel, 50);
     } finally {
       setIsLoading(false);
     }
@@ -365,28 +416,29 @@ export default function AIChatPlanner() {
       )}
 
       <>
-          {/* Top AI Status Indicator */}
+          {/* Top AI Status Indicator + Force Reconnect (Slice 3: visible health, no more silent "no AI connected") */}
           <div style={{ ...styles.chatHeader, justifyContent: 'space-between', display: 'flex', width: '100%' }} className="glass-panel">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={styles.avatar}>👵</span>
               <div style={styles.headerTitleContainer}>
                 <h3 style={styles.headerTitle}>Nani's AI Rasoi Saathi</h3>
-                <div style={{ fontSize: '10px', color: '#7A5540', marginTop: '2px' }}>
-                  AI: Local wisdom + Puter attempts (console for details) 
+                <div style={{ fontSize: '10px', color: '#7A5540', marginTop: '2px', lineHeight: '1.3' }}>
+                  {aiStatusLabel} 
                   <button 
                     onClick={() => {
-                      try { 
-                        localStorage.removeItem('homechef_ai_cache_v2'); 
-                        alert('AI cache cleared — next message will retry Puter. Ask Nani a recipe!'); 
-                      } catch(e){}
+                      const ok = clearAICache();
+                      refreshAIStatusLabel();
+                      setToastMessage(ok ? '🧹 AI Cache cleared — next message forces fresh Puter attempt!' : 'Cache clear attempted (see console)');
+                      setTimeout(() => setToastMessage(''), 2800);
                     }}
                     style={{ marginLeft: '8px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: 'transparent', color: '#E8692A', borderRadius: '4px', cursor: 'pointer' }}
+                    title="Clears homechef_ai_cache_v2 + next Nani message retries real REST (not cached fallback)"
                   >
-                    Clear AI Cache / Reconnect
+                    Force Reconnect / Clear AI Cache
                   </button>
                 </div>
                 <span style={styles.statusLabel}>
-                  {navigator.onLine ? '● AI Assistant Connected' : '● Local Offline Backup Active'}
+                  {navigator.onLine ? '● Capable of live Puter' : '● Pure local KB (offline sim)'} • Archetype from profile injected always
                 </span>
               </div>
             </div>

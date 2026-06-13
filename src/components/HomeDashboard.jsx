@@ -62,12 +62,26 @@ const renderMoodText = (text) => {
 
 export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
   const { state } = useApp();
-  const { profile = {}, weeklyPlan = {}, nutritionScore = {} } = state;
+  const { profile = {}, weeklyPlan = {}, nutritionScore = {}, inventory = [] } = state;
   const [greeting, setGreeting] = useState('Namaste! 👋');
   const [greetingSub, setGreetingSub] = useState('Ready to cook something swadisht?');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [moodResponse, setMoodResponse] = useState('');
   const [isMoodLoading, setIsMoodLoading] = useState(false);
+
+  // Prominent, always-visible Family + Archetype Badge (the "VC sees this and gets it" detail)
+  const familyBadge = profile.familyName 
+    ? `${profile.familyName} Family` 
+    : 'Your Family';
+  const palateBadge = profile.regionalPalate ? profile.regionalPalate : 'Pan-Indian';
+  const dietBadge = profile.dietType || 'Vegetarian 🌱';
+  const archetypeBadge = profile.culinaryArchetype === 'biohacker' 
+    ? '🌿 Bio-Hacker (European VC\'s Wife mode)' 
+    : profile.culinaryArchetype === 'cognitive' 
+      ? '🔥 Cognitive Hustler (Shark Tank Judge mode)' 
+      : '🏠 Standard Household (Nani\'s classic)';
+
+  const fullProfileLine = `${familyBadge} • ${palateBadge} • ${dietBadge} • ${archetypeBadge}`;
 
   // Time-aware greeting setup
   useEffect(() => {
@@ -165,7 +179,14 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
         <div style={styles.headerInfo}>
           <span style={styles.familyTag} className="text-micro">FAMILY ACCOUNT</span>
           <h1 className="text-serif" style={styles.familyName}>{profile?.familyName ? `${profile.familyName} Family` : 'Ghar Ki Rasoi'}</h1>
-          <span style={styles.profileBadge}>{(profile?.regionalPalate || 'general').toUpperCase()} • {profile?.dietType || 'Vegetarian 🌱'}</span>
+          <span style={styles.profileBadge}>
+            {(profile?.regionalPalate || 'general').toUpperCase()} • {profile?.dietType || 'Vegetarian 🌱'} 
+            {profile?.culinaryArchetype ? ` • ${profile.culinaryArchetype === 'biohacker' ? '🌿 BIO-HACKER' : profile.culinaryArchetype === 'cognitive' ? '🔥 COGNITIVE' : '🏠 CLASSIC'}` : ''}
+          </span>
+          {/* Subtle but powerful engineering signal for anyone paying attention (VCs included) */}
+          <div style={{ fontSize: '9px', opacity: 0.55, marginTop: '2px' }}>
+            Offline RAG + Archetype Engine active — every suggestion is retrieved for *your* exact palate & persona
+          </div>
         </div>
       </div>
 
@@ -193,19 +214,19 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
         </div>
       </div>
 
-      {/* Great Indian Thali Map Banner Card */}
+      {/* Great Indian Thali Map Banner Card - Prominent launcher (Slice 2) */}
       <div style={styles.thaliBanner} className="glass-card animate-pop" onClick={onOpenThaliMap}>
         <div style={styles.thaliBannerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '24px' }}>🗺️</span>
-            <span style={styles.thaliTag}>INTERACTIVE VIRTUAL FEAST</span>
+            <span style={{ fontSize: '26px' }}>🗺️</span>
+            <span style={styles.thaliTag}>INTERACTIVE VIRTUAL FEAST • SVG + PINS</span>
           </div>
-          <h3 className="text-serif" style={styles.thaliTitle}>The Great Indian Thali Explorer</h3>
+          <h3 className="text-serif" style={styles.thaliTitle}>Explore the Great Indian Thali</h3>
           <p style={styles.thaliDesc}>
-            Explore the single most viral signature dish from all 28 States & 8 Union Territories across India.
+            Tap zones for pulsing state pins (all 36). See Haryana Bajre ki Khichdi &amp; more. Zoom, search, then Cook!
           </p>
           <div style={styles.thaliCTA}>
-            <span>Explore 36 Regional Dishes →</span>
+            <span>🗺️ 6 Zones • Pulsing Pins • 36 States →</span>
           </div>
         </div>
       </div>
@@ -707,16 +728,18 @@ const styles = {
     cursor: 'pointer'
   },
   thaliBanner: {
-    padding: '20px',
+    padding: '22px 20px',
     borderRadius: '20px',
     background: 'linear-gradient(135deg, #1E140F 0%, #2C1A11 100%)',
-    border: '1.5px solid #E8692A',
+    border: '2.5px solid #E8692A',
     color: '#fff',
     cursor: 'pointer',
     marginBottom: '24px',
-    boxShadow: '0 8px 24px rgba(232, 105, 42, 0.15)',
+    boxShadow: '0 10px 28px rgba(232, 105, 42, 0.28), 0 0 0 1px rgba(232, 105, 42, 0.1) inset',
     transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-    textAlign: 'left'
+    textAlign: 'left',
+    position: 'relative',
+    overflow: 'hidden'
   },
   thaliBannerContent: {
     display: 'flex',

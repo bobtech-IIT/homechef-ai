@@ -228,13 +228,76 @@ const OFFLINE_RECIPES = {
     difficulty: "Easy",
     isVegetarian: true,
     story: "The universal Indian healing comfort bowl, loved across all states."
+  },
+
+  // === Extra recipes for richer offline RAG (added for depth & archetype coverage) ===
+  rajasthan: {
+    name: "Dal Baati Churma (Cognitive Fuel Version)",
+    ingredients: [
+      "Whole wheat flour (2 cups for baati)",
+      "Ghee (generous — brain loves it)",
+      "Mixed dals (1.5 cups — high protein)",
+      "Ragi flour (2 tbsp — for sustained focus)",
+      "Jaggery + nuts for churma"
+    ],
+    steps: [
+      "Knead baati dough with ghee + water. Form balls, bake/deep fry till golden.",
+      "Pressure cook mixed dals with spices until creamy.",
+      "For cognitive boost: add ragi and extra nuts to the churma crumble.",
+      "Break baati, pour hot dal + ghee, top with protein-packed churma."
+    ],
+    cookTime: "55 mins",
+    difficulty: "Medium",
+    isVegetarian: true,
+    story: "Rajasthan's royal endurance meal. The high-protein + sustained carb version is perfect for long thinking sessions or Shark-Tank-level hustle."
+  },
+
+  kerala_bio: {
+    name: "Nadan Avial (Bio-Hacker Clean)",
+    ingredients: [
+      "Mixed vegetables (yam, raw banana, beans, carrots — 3 cups)",
+      "Fresh grated coconut (1.5 cups)",
+      "Green chilies, cumin, curry leaves",
+      "Thick curd (3 tbsp — probiotic)",
+      "Coconut oil (measured, 1.5 tbsp)"
+    ],
+    steps: [
+      "Steam vegetables just until tender (keep nutrients).",
+      "Coarsely grind coconut + cumin + chili for clean paste.",
+      "Mix with curd off-heat. Finish with measured coconut oil + curry leaves.",
+      "Zero refined anything. High fiber, healthy fats, adaptogenic curry leaves."
+    ],
+    cookTime: "25 mins",
+    difficulty: "Easy",
+    isVegetarian: true,
+    story: "Kerala's classic made bio-hacker friendly — minimal oil, maximum micronutrients and gut health. Zen plating in a traditional uruli feels elevated."
+  },
+
+  punjab_cognitive: {
+    name: "Sarson ka Saag + Makki di Roti (High-Protein Brain Version)",
+    ingredients: [
+      "Mustard greens + spinach (big bunch)",
+      "Makki (corn) flour for rotis + little ragi",
+      "Ghee + ginger + garlic for tempering",
+      "White butter / Greek yogurt on top",
+      "Green chili for kick"
+    ],
+    steps: [
+      "Slow-cook saag with ginger/garlic till dark and fragrant (long cook = better bioavailability).",
+      "Make makki + ragi rotis on tawa with ghee.",
+      "Top saag with extra protein (yogurt or extra butter) for cognitive staying power."
+    ],
+    cookTime: "60 mins (mostly passive)",
+    difficulty: "Medium",
+    isVegetarian: true,
+    story: "Punjab's winter classic upgraded for sustained brain energy. The ragi addition and protein topping turn it into long-meeting fuel."
   }
 };
 
 /**
- * 🗺️ Layer 5 Fallback: Region-Matched Recipe Engine
+ * 🗺️ Layer 5 Fallback: Region-Matched Recipe Engine (archetype-aware for bio/cognitive variants)
  */
-export const getLocalFallbackRecipe = (query = '') => {
+export const getLocalFallbackRecipe = (query = '', archetype = 'standard') => {
   const q = query.toLowerCase();
   let selected = OFFLINE_RECIPES.general;
 
@@ -258,11 +321,58 @@ export const getLocalFallbackRecipe = (query = '') => {
     selected = OFFLINE_RECIPES.odisha;
   }
 
-  return `### 🍛 Local Offline Rasoi Saathi Fallback Engine
+  const archNote = archetype === 'biohacker' 
+    ? ' (Biohacker mode: low-GI / clean / adaptogen focus)' 
+    : archetype === 'cognitive' 
+      ? ' (Cognitive mode: high-protein / brain stamina focus)' 
+      : '';
+
+  // Safe concatenation to avoid bundler (rolldown) binding issues with large dynamic templates in this Vite setup
+  let recipeText = '### 🍛 Local Offline Rasoi Saathi Fallback Engine' + archNote + '\n\n';
+  recipeText += 'Mausam aur temporary network conditions ki wajah se, hamara cloud AI server connection thoda dheema hai. Par koi baat nahi! Aapki rasoi rukni nahi chahiye. \n\n';
+  recipeText += 'Yahan aapke palate ke liye ek swadisht traditional recipe hai:\n\n';
+  recipeText += '#### 🍽️ **' + selected.name + '**\n';
+  recipeText += '* **Cook Time:** ' + selected.cookTime + ' | **Difficulty:** ' + selected.difficulty + ' | **Diet:** Vegetarian 🌱\n';
+  recipeText += '* * Backstory: ' + selected.story + ' *\n\n';
+  recipeText += '**📝 Ingredients Required:**\n' + selected.ingredients.map(ing => '- ' + ing).join('\n') + '\n\n';
+  recipeText += '**👩‍🍳 Step-by-Step Cooking Steps:**\n' + selected.steps.map((step, idx) => (idx + 1) + '. ' + step).join('\n') + '\n\n';
+  recipeText += '---\n*💡 System Note: Stable Internet aate hi AI Chat automatically online mode me chalne lagegi.*';
+
+  return recipeText;
+  const q = query.toLowerCase();
+  let selected = OFFLINE_RECIPES.general;
+
+  if (q.includes('gujarat') || q.includes('gujarati')) {
+    selected = OFFLINE_RECIPES.gujarat;
+  } else if (q.includes('punjab') || q.includes('punjabi')) {
+    selected = OFFLINE_RECIPES.punjab;
+  } else if (q.includes('maharashtra') || q.includes('marathi')) {
+    selected = OFFLINE_RECIPES.maharashtra;
+  } else if (q.includes('bangladesh') || q.includes('east bengal') || q.includes('bangladeshi')) {
+    selected = OFFLINE_RECIPES.bangladesh;
+  } else if (q.includes('kolkata') || q.includes('west bengal') || q.includes('kolkata cuisine')) {
+    selected = OFFLINE_RECIPES.kolkata;
+  } else if (q.includes('bengal') || q.includes('bengali')) {
+    selected = OFFLINE_RECIPES.kolkata; // default fallback
+  } else if (q.includes('tamil') || q.includes('south')) {
+    selected = OFFLINE_RECIPES.tamilnadu;
+  } else if (q.includes('kerala') || q.includes('malayali')) {
+    selected = OFFLINE_RECIPES.kerala;
+  } else if (q.includes('odisha') || q.includes('oriya') || q.includes('orissa')) {
+    selected = OFFLINE_RECIPES.odisha;
+  }
+
+  const archNote = archetype === 'biohacker' 
+    ? ' (Biohacker mode: low-GI / clean / adaptogen focus)' 
+    : archetype === 'cognitive' 
+      ? ' (Cognitive mode: high-protein / brain stamina focus)' 
+      : '';
+
+  return `### 🍛 Local Offline Rasoi Saathi Fallback Engine${archNote}
 
 Mausam aur temporary network conditions ki wajah se, hamara cloud AI server connection thoda dheema hai. Par koi baat nahi! Aapki rasoi rukni nahi chahiye. 
 
-Yahan aapke palate ke liye ek swadisht traditional recipe hai:
+Yahan aapke palate ke liye ek swadisht traditional recipe hai:`;
 
 #### 🍽️ **${selected.name}**
 * **Cook Time:** ${selected.cookTime} | **Difficulty:** ${selected.difficulty} | **Diet:** Vegetarian 🌱
@@ -279,15 +389,23 @@ ${selected.steps.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}
 };
 
 /**
- * 💬 Layer 5 Fallback: Smart Chat Response Generator
+ * 💬 Layer 5 Fallback: Smart Chat Response Generator (now archetype-aware: standard / biohacker / cognitive)
+ * Ensures Nani always gives useful Hinglish even if Puter REST never succeeds.
  */
-export const getLocalFallbackChat = (query = '') => {
+export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
   const q = query.toLowerCase();
+  const archLabel = archetype === 'biohacker' ? 'Biohacker (low-GI / adaptogen)' : 
+                    archetype === 'cognitive' ? 'Cognitive (high-protein / brain fuel)' : 'Standard traditional';
   
   if (q.includes('hello') || q.includes('hi') || q.includes('namaste') || q.includes('suno') || q.includes('dhanyawad')) {
+    const greetExtra = archetype === 'biohacker' 
+      ? ' Aaj bhi clean eating ke liye best choices suggest karungi.' 
+      : archetype === 'cognitive' 
+        ? ' Dimag aur energy ke liye best brain foods yaad hain.' 
+        : '';
     return `Namaste beta! Main aapki **Nani - Rasoi Saathi** hoon. 🍳 
 
-Aaj thoda network slow hai, lekin meri rasoi ki yaadein aur traditional recipes kabhi offline nahi hoti. Aap mujhse Haryana, Bengal, Gujarat, Punjab, Maharashtra, Tamil Nadu, Kerala ya kisi bhi state ki traditional recipe maang sakte ho — step-by-step, bilkul ghar jaisa.
+Aaj thoda network slow hai, lekin meri rasoi ki yaadein aur traditional recipes kabhi offline nahi hoti. Aap mujhse Haryana, Bengal, Gujarat, Punjab, Maharashtra, Tamil Nadu, Kerala ya kisi bhi state ki traditional recipe maang sakte ho — step-by-step, bilkul ghar jaisa. (${archLabel})${greetExtra}
 
 Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
   }
@@ -305,7 +423,52 @@ Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks
   }
 
   if (q.includes('bajre') || q.includes('bajra') || (q.includes('haryana') && q.includes('khichdi')) || q.includes('bajre ki khichdi')) {
-    return `Arre waah beta! Haryana ki **Bajre ki Khichdi** maangi hai na? Bahut hi pyari aur sehatmand dish hai — sardi mein toh jaan hai!
+    // Archetype-aware rich fallbacks — the exact user "Nani, mujhe Bajre..." prompt must succeed with useful steps
+    if (archetype === 'biohacker') {
+      return `Arre waah beta! Aapke **Biohacker** palate ke liye Haryana ki low-GI **Bajre ki Khichdi** — blood sugar steady rakhe aur energy clean de. Adaptogens se boost!
+
+**📝 Ingredients (4-5 logon ke liye, clean version):**
+- Bajra (pearl millet) — 1 cup, achhe se dhoya hua (low-GI star)
+- Moong dal (thodi si, optional) — 2-3 tbsp
+- Paani — 4-5 cups (adjust)
+- Namak + haldi (extra pinch for anti-inflam) — swaad anusaar
+- Cold-pressed virgin coconut or avocado oil (thoda) ya measured desi ghee (1-2 tbsp max)
+- Fresh adrak + haldi + optional Tulsi/Holy Basil — adaptogen boost
+- Hand-churned white butter or thick Greek-style yogurt — serving ke liye (probiotic angle)
+- Jeera, fresh coriander
+
+**👩‍🍳 Step-by-Step (Biohacker Clean Slow Tarika):**
+1. Bajre ko raat bhar ya 4-5 ghante bhigokar, achhe se dholo (fiber intact rakho).
+2. Bhari handi mein 4 cups garam paani, namak, haldi, adrak, thoda oil/ghee daal kar ubaal lao.
+3. Bhiga bajra + moong + extra haldi/adrak daal ke dheemi aanch par 40-50 min pakao. Hilate raho, garam paani se adjust for creamy not gluey texture.
+4. Last 1-2 min mein measured ghee/oil + jeera tadka. Bahut zyada ghee mat daalna — low-GI ke liye control.
+5. Garam serve. Upar adaptogen garnish (coriander + thoda fresh haldi grate) + clean dollop of yogurt or light makkhan. Zen plating: simple earthen bowl, minimal, natural greens pop.
+
+Yeh version blood sugar spikes nahi karega, sustained energy dega. Ghee kam, adaptogens zyada — perfect for modern biohacker rasoi! Cloud wapas aaye toh bhi yahi smart tarika suggest karungi. Shubh bhojan beta! 🌿`;
+    } else if (archetype === 'cognitive') {
+      return `Arre waah beta! **Cognitive Hustler** ke liye Haryana ki **Bajre ki Khichdi** — sustained brain stamina + protein power wali version. Ragi/ancient grain notes add kar sakte ho agar available ho.
+
+**📝 Ingredients (4-5 logon ke liye, brain-fuel):**
+- Bajra (pearl millet) — 1 cup, dhoya hua (steady glucose for focus)
+- Moong dal — 3-4 tbsp (protein)
+- Paani — 4-5 cups
+- Namak + haldi + jeera — swaad
+- Desi ghee — 3 tbsp (MCT like brain fuel)
+- Hand-churned makkhan (white butter) — serving
+- Optional boosters: crushed walnuts or flax seeds (if pantry mein), extra adrak
+- Garam masala light + fresh coriander
+
+**👩‍🍳 Step-by-Step (Cognitive Power Tarika):**
+1. Bajra bhigao 4-5 hrs minimum, dholo.
+2. Handi mein paani + namak + haldi + adrak ubaal. Bajra + moong daalo.
+3. Dheemi aanch 40-50 min, continuous stir for creamy texture (no lumps = steady energy).
+4. Last mein full ghee + light jeera tadka. Protein + fat combo for focus.
+5. Serve hot with generous makkhan dollops + thandi lassi. Dramatic plating: bold contrast bowl, walnut sprinkle on top for omega-3 pop, fresh herbs for color strike.
+
+Haryana fields ki warmth + modern brain fuel. Yeh khichdi dimag ko long meetings ke liye ready rakhegi! Cloud aa jaaye toh bhi yahi powerful version. Shubh bhojan beta! 🔥`;
+    } else {
+      // Standard traditional (default rich Hinglish as previously enriched)
+      return `Arre waah beta! Haryana ki **Bajre ki Khichdi** maangi hai na? Bahut hi pyari aur sehatmand dish hai — sardi mein toh jaan hai!
 
 **📝 Ingredients (4-5 logon ke liye):**
 - Bajra (pearl millet) — 1 cup, achhe se dhoya hua
@@ -327,12 +490,18 @@ Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks
 Yeh dish Haryana ke kheton ki mehak laati hai. Ghee aur makkhan kam mat karna — yahi iska asli swaad hai! 
 
 Koi baat nahi agar cloud wapas aa jaaye, main phir bhi yahi traditional tarika hi bataungi. Shubh bhojan beta! 💛`;
+    }
   }
   
-  // Default smart template — always helpful
-  return `Ji bilkul beta! Main samajh gaya. 
+  // Default smart template — always helpful + archetype note (no more plain "offline mode" generic)
+  const defaultArchetypeTip = archetype === 'biohacker' 
+    ? ' (Clean low-GI twist try karo: kam ghee, extra haldi/adrak)' 
+    : archetype === 'cognitive' 
+      ? ' (Protein boost: dal badhao + nuts sprinkle if possible)' 
+      : '';
+  return `Ji bilkul beta! Main samajh gaya. (${archLabel})
 
-Main abhi offline local database me isko search kar raha hoon lekin yeh lo — ek bahut hi swadisht aur jaldi banne wali comfort recipe:
+Main abhi offline local database me isko search kar raha hoon lekin yeh lo — ek bahut hi swadisht aur jaldi banne wali comfort recipe${defaultArchetypeTip}:
 
 **Homestyle Bajra-Mix Veg Khichdi** (ya jo bhi aapke paas hai usse bana lo).
 - Jo daal-chawal/bajra ho, usko ghee mein jeera + haldi + namak daal kar 15-20 min dheemi aanch par paka do.
