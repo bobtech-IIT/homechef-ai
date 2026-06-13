@@ -339,54 +339,9 @@ export const getLocalFallbackRecipe = (query = '', archetype = 'standard') => {
   recipeText += '---\n*💡 System Note: Stable Internet aate hi AI Chat automatically online mode me chalne lagegi.*';
 
   return recipeText;
-  const q = query.toLowerCase();
-  let selected = OFFLINE_RECIPES.general;
-
-  if (q.includes('gujarat') || q.includes('gujarati')) {
-    selected = OFFLINE_RECIPES.gujarat;
-  } else if (q.includes('punjab') || q.includes('punjabi')) {
-    selected = OFFLINE_RECIPES.punjab;
-  } else if (q.includes('maharashtra') || q.includes('marathi')) {
-    selected = OFFLINE_RECIPES.maharashtra;
-  } else if (q.includes('bangladesh') || q.includes('east bengal') || q.includes('bangladeshi')) {
-    selected = OFFLINE_RECIPES.bangladesh;
-  } else if (q.includes('kolkata') || q.includes('west bengal') || q.includes('kolkata cuisine')) {
-    selected = OFFLINE_RECIPES.kolkata;
-  } else if (q.includes('bengal') || q.includes('bengali')) {
-    selected = OFFLINE_RECIPES.kolkata; // default fallback
-  } else if (q.includes('tamil') || q.includes('south')) {
-    selected = OFFLINE_RECIPES.tamilnadu;
-  } else if (q.includes('kerala') || q.includes('malayali')) {
-    selected = OFFLINE_RECIPES.kerala;
-  } else if (q.includes('odisha') || q.includes('oriya') || q.includes('orissa')) {
-    selected = OFFLINE_RECIPES.odisha;
-  }
-
-  const archNote = archetype === 'biohacker' 
-    ? ' (Biohacker mode: low-GI / clean / adaptogen focus)' 
-    : archetype === 'cognitive' 
-      ? ' (Cognitive mode: high-protein / brain stamina focus)' 
-      : '';
-
-  return `### 🍛 Local Offline Rasoi Saathi Fallback Engine${archNote}
-
-Mausam aur temporary network conditions ki wajah se, hamara cloud AI server connection thoda dheema hai. Par koi baat nahi! Aapki rasoi rukni nahi chahiye. 
-
-Yahan aapke palate ke liye ek swadisht traditional recipe hai:`;
-
-#### 🍽️ **${selected.name}**
-* **Cook Time:** ${selected.cookTime} | **Difficulty:** ${selected.difficulty} | **Diet:** Vegetarian 🌱
-* * Backstory: ${selected.story} *
-
-**📝 Ingredients Required:**
-${selected.ingredients.map(ing => `- ${ing}`).join('\n')}
-
-**👩‍🍳 Step-by-Step Cooking Steps:**
-${selected.steps.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}
-
----
-*💡 System Note: Stable Internet aate hi AI Chat automatically online mode me chalne lagegi.*`;
 };
+
+
 
 /**
  * 💬 Layer 5 Fallback: Smart Chat Response Generator (now archetype-aware: standard / biohacker / cognitive)
