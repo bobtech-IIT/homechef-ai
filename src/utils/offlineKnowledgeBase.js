@@ -498,6 +498,39 @@ export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
   const words = q.split(/[^a-zA-Z]+/).filter(w => w.length > 1);
   const isGreeting = words.includes('hello') || words.includes('hi') || words.includes('namaste') || words.includes('suno') || words.includes('dhanyawad');
 
+  // Mood Specific Fallbacks
+  if (q.includes('tired') || q.includes('thake')) {
+    return `Koi baat nahi beta! Aise thake hue mood me bilkul halka aur jaldi banne wala khana hona chahiye. 
+
+Aap hamare local cookbook se **Classic Kanda Batata Poha** (sirf 15 min) ya ek garam cup **Moong Dal Khichdi** try kar sakte hain. Dono hi comfort food hain aur body ko bina heavy feel karaye fresh energy denge! 
+
+Garam-garam piyo aur thoda aaram karo! 💛`;
+  }
+  
+  if (q.includes('comfort') || q.includes('bimaar')) {
+    return `Arey beta, sehat sabse pehle hai! Jab mood ya body comfort maange, toh dadi ki rasoi se garam-garam **Moong Dal Khichdi** se behtar kuch nahi. 
+
+Yeh pachan me halki hoti hai aur body ko heal karti hai. Isme thoda ghee dalna mat bhoolna. Kuch hi samay me bilkul fresh feel karoge! 🍲`;
+  }
+  
+  if (q.includes('detox') || q.includes('halka')) {
+    return `Apne system ko detox aur halka rakhna bohot zaroori hai beta! 
+
+Dadi ka nuskha hai ki aaj ke din bilkul light vegetable stew ya **Odia Dalma** banayein jisme dher saari papita aur lauki ho. Yeh pachan ko shant rakhegi aur toxins ko clear queue se nikalege! 🍃`;
+  }
+  
+  if (q.includes('celebrat') || q.includes('khush')) {
+    return `Waah beta! Khushi ka din hai toh khana bhi utsav jaisa hona chahiye! 🎉
+
+Aap traditional feast me **Bangladeshi Bhuna Khichuri** with begun bhaja try kar sakte hain, ya phir **Kolkata Aloo Posto** ke sath garma-garam dal-chawal. Khushi ke is mauke par swad aur badh jayega!`;
+  }
+  
+  if (q.includes('energet') || q.includes('active')) {
+    return `⚡ Shabaash beta! Aise energetic aur active feel karne par toh dher saari energy dene wala khana banna chahiye. 
+
+Aap high-protein **Dhaba Style Dal Fry** aur garma-garam roti try karein, ya phir badam/coconut powder sprinkled poha. Yeh energy level ko long time tak high rakhega!`;
+  }
+
   if (isGreeting) {
     const greetExtra = archetype === 'biohacker' 
       ? ' Clean, low-GI choices ke liye best adaptations yaad hain.' 

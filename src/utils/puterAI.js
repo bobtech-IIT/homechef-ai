@@ -291,13 +291,16 @@ const callPuterSDK = async (messages) => {
   }
 
   // Try ONLY Puter's default free model (gpt-5-nano) using the browser SDK.
-  // If credits are exhausted, the SDK will try to inject the auth modal,
-  // which is completely hidden and neutralized via CSS in index.css.
-  // Catching this error immediately allows the app to cascade straight to Offline RAG.
+  // If credits are exhausted or if it tries to open the auth modal (which is hidden via CSS),
+  // it will either fail or hang. We wrap it in a Promise.race with a 6-second timeout
+  // to guarantee that we fallback to Offline RAG seamlessly without hanging.
   const model = 'gpt-5-nano';
   try {
     console.log(`🤖 Puter SDK calling: ${model}...`);
-    const r = await window.puter.ai.chat(messages, { model });
+    const r = await Promise.race([
+      window.puter.ai.chat(messages, { model }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+    ]);
     const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
     if (!content) throw new Error('empty_response');
     updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
@@ -330,6 +333,26 @@ const deactivatePuterBoost = () => {
   try {
     sessionStorage.setItem('homechef_puter_boost_active', 'false');
   } catch { /* ignore */ }
+};
+
+// Extract the actual user query or mood selection from templated prompts to prevent key leakage in fallbacks
+const extractCoreQuery = (prompt) => {
+  if (typeof prompt !== 'string') return '';
+  
+  // 1. Extract from latest message pattern in planner chat prompts
+  const betaMatch = prompt.match(/Latest message to reply to:\s*\n*Beta:\s*(.*)/i);
+  if (betaMatch && betaMatch[1]) {
+    return betaMatch[1].trim();
+  }
+  
+  // 2. Extract from mood selection pattern in HomeDashboard mood wheel prompts
+  const moodMatch = prompt.match(/Family mood is:\s*([a-z\-]+)\s*\(([^)]+)\)/i);
+  if (moodMatch && moodMatch[2]) {
+    // Return the mood label (like "Tired / Thake Hue")
+    return moodMatch[2].trim();
+  }
+  
+  return prompt.trim();
 };
 
 // ─── Queue Processor ──────────────────────────────────────────────────────────
@@ -366,9 +389,11 @@ const processQueue = async () => {
     // LAYER 3 — Offline RAG
     const arch = getArchetype(systemInstruction);
     updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
-    const fallback = (prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
-      ? getLocalFallbackRecipe(prompt, arch)
-      : getLocalFallbackChat(prompt, arch);
+    
+    const coreQuery = extractCoreQuery(prompt);
+    const fallback = (coreQuery.toLowerCase().includes('plan') || coreQuery.toLowerCase().includes('menu') || prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
+      ? getLocalFallbackRecipe(coreQuery, arch)
+      : getLocalFallbackChat(coreQuery, arch);
     resolve(fallback, false);
   } catch (err) {
     reject(err);
