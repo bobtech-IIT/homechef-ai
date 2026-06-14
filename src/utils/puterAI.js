@@ -284,68 +284,43 @@ const callBYOK = async (messages, byok) => {
   throw new Error(`Unknown provider: ${provider}`);
 };
 
-// ─── Puter SDK Client (No popup visible, suppressed via CSS) ──────────────────────
-const loadPuterSDK = () => {
-  return new Promise((resolve, reject) => {
-    if (window.puter && window.puter.ai) {
-      resolve(window.puter);
-      return;
+// ─── Vercel Serverless Proxy Client (Direct serverless completion) ──────────────────
+const callVercelProxy = async (messages) => {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 8000); // 8-second timeout for serverless response
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages }),
+    });
+    clearTimeout(tid);
+    
+    if (res.status === 429) {
+      let msg = 'Nani is resting right now beta. Free limit exhaust ho gaya hai. Please type your own API key in Settings, or use offline chat! 🙏';
+      try {
+        const data = await res.json();
+        if (data.message) msg = data.message;
+      } catch {}
+      throw new Error(msg);
     }
     
-    // Check if script already exists in DOM
-    let script = document.querySelector('script[src*="js.puter.com"]');
-    if (!script) {
-      script = document.createElement('script');
-      script.src = 'https://js.puter.com/v2/';
-      document.head.appendChild(script);
+    if (!res.ok) {
+      throw new Error(`Server returned error status ${res.status}`);
     }
     
-    let checkCount = 0;
-    const interval = setInterval(() => {
-      if (window.puter && window.puter.ai) {
-        clearInterval(interval);
-        resolve(window.puter);
-      } else if (checkCount > 40) { // 4 seconds timeout
-        clearInterval(interval);
-        reject(new Error('Puter SDK load timeout'));
-      }
-      checkCount++;
-    }, 100);
-  });
-};
-
-const callPuterSDK = async (messages) => {
-  try {
-    await loadPuterSDK();
-  } catch (err) {
-    throw new Error('Puter SDK not loaded: ' + err.message);
-  }
-
-  if (!window.puter || !window.puter.ai) {
-    throw new Error('Puter SDK not loaded yet');
-  }
-
-  // Try ONLY Puter's default free model (gpt-5-nano) using the browser SDK.
-  // If credits are exhausted or if it tries to open the auth modal (which is hidden via CSS),
-  // it will either fail or hang. We wrap it in a Promise.race with a 6-second timeout
-  // to guarantee that we fallback to Offline RAG seamlessly without hanging.
-  const model = 'gpt-5-nano';
-  try {
-    console.log(`🤖 Puter SDK calling: ${model}...`);
-    const r = await Promise.race([
-      window.puter.ai.chat(messages, { model }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
-    ]);
-    const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
-    if (!content) throw new Error('empty_response');
-    updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
-    return content;
-  } catch (err) {
-    console.warn(`Puter SDK: ${model} failed, cascading to Offline:`, err.message || err);
-    throw err;
+    const data = await res.json();
+    if (!data.content) throw new Error('empty_response');
+    
+    updateAIStatus({ status: 'connected', lastMessage: 'Vercel Serverless Proxy ✓' });
+    return data.content;
+  } finally {
+    clearTimeout(tid);
   }
 };
-
 
 // ─── Archetype extractor ──────────────────────────────────────────────────────
 const getArchetype = (sys = '') => {
@@ -355,19 +330,9 @@ const getArchetype = (sys = '') => {
   return 'standard';
 };
 
-// Helper to track if Puter Guest Boost is active (explicit user opt-in)
+// Helper to track if Puter Guest Boost is active (repurposed for Vercel Proxy status check)
 const isPuterBoostActive = () => {
-  try {
-    return sessionStorage.getItem('homechef_puter_boost_active') === 'true';
-  } catch {
-    return false;
-  }
-};
-
-const deactivatePuterBoost = () => {
-  try {
-    sessionStorage.setItem('homechef_puter_boost_active', 'false');
-  } catch { /* ignore */ }
+  return true; // Always active by default to leverage Vercel intermediary
 };
 
 // Extract the actual user query or mood selection from templated prompts to prevent key leakage in fallbacks
@@ -405,32 +370,34 @@ const processQueue = async () => {
         resolve(result);
         return;
       } catch (err) {
-        console.warn(`BYOK (${byok.provider}) failed, falling to Puter:`, err.message);
+        console.warn(`BYOK (${byok.provider}) failed, falling to Vercel:`, err.message);
       }
     }
 
-    // LAYER 2 — Puter SDK Client (only if boost is active)
-    if (isPuterBoostActive()) {
-      try {
-        const result = await callPuterSDK(messages);
-        resolve(result);
-        return;
-      } catch (puterErr) {
-        console.warn('Puter SDK failed, using Offline RAG fallback for this message:', puterErr.message);
-        // Fall through to offline RAG
-      }
-    }
+    // LAYER 2 — Vercel Serverless Proxy
+    try {
+      const result = await callVercelProxy(messages);
+      resolve(result);
+      return;
+    } catch (proxyErr) {
+      console.warn('Vercel serverless proxy failed, using Offline RAG fallback:', proxyErr.message);
+      
+      const isRateLimit = proxyErr.message.includes('exhaust') || proxyErr.message.includes('limit');
+      const warningPrefix = isRateLimit 
+        ? `⚠️ [Free AI limit exhaust ho gaya hai beta. Settings panel ⚙ me jaakar apni khud ki Groq/Gemini key daal sakte hain, ya offline chat ka maza lein!]\n\n`
+        : `⚠️ [Technical issue beta, offline mode active!]\n\n`;
 
-    // LAYER 3 — Offline RAG
-    const arch = getArchetype(systemInstruction);
-    updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
-    
-    const coreQuery = extractCoreQuery(prompt);
-    const hasGreeted = Array.isArray(messages) && messages.some(m => m.role === 'assistant');
-    const fallback = (coreQuery.toLowerCase().includes('plan') || coreQuery.toLowerCase().includes('menu') || prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
-      ? getLocalFallbackRecipe(coreQuery, arch)
-      : getLocalFallbackChat(coreQuery, arch, hasGreeted);
-    resolve(fallback, false);
+      const arch = getArchetype(systemInstruction);
+      updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
+      
+      const coreQuery = extractCoreQuery(prompt);
+      const hasGreeted = Array.isArray(messages) && messages.some(m => m.role === 'assistant');
+      const fallback = (coreQuery.toLowerCase().includes('plan') || coreQuery.toLowerCase().includes('menu') || prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
+        ? getLocalFallbackRecipe(coreQuery, arch)
+        : getLocalFallbackChat(coreQuery, arch, hasGreeted);
+        
+      resolve(warningPrefix + fallback, false);
+    }
   } catch (err) {
     reject(err);
   } finally {
@@ -470,23 +437,13 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
   });
 };
 
-// ─── Opt-in Puter Guest Boost (explicit button only, never auto) ──────────────
-// Toggles Puter Serverless Boost state in sessionStorage without loading any scripts.
+// ─── Opt-in Vercel Proxy Boost (Kept for compatibility with existing settings buttons) ────
 export async function triggerPuterGuestOnce() {
   try {
-    const active = sessionStorage.getItem('homechef_puter_boost_active') === 'true';
-    if (active) {
-      sessionStorage.setItem('homechef_puter_boost_active', 'false');
-      updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter Boost Disabled' });
-      return false;
-    } else {
-      sessionStorage.setItem('homechef_puter_boost_active', 'true');
-      updateAIStatus({ status: 'connected', lastMessage: 'Puter Serverless Proxy Active' });
-      // Dynamically load the Puter SDK script
-      loadPuterSDK().catch(e => console.warn('Pre-loading Puter SDK failed:', e));
-      return true;
-    }
+    updateAIStatus({ status: 'connected', lastMessage: 'Vercel Serverless Active' });
+    return true;
   } catch {
     return false;
   }
 }
+

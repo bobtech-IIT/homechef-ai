@@ -26,9 +26,9 @@ export default function SetupWizard() {
   }, [formData.regionalPalate]);
 
   const handleNext = () => {
-    if (step < 5) {
+    if (step < 4) {
       setStep(step + 1);
-    } else if (step === 5) {
+    } else if (step === 4) {
       handleBypassLogin();
     }
   };
@@ -48,7 +48,7 @@ export default function SetupWizard() {
 
 
   const handleBack = () => {
-    if (step > 1 && step <= 5) setStep(step - 1);
+    if (step > 1 && step <= 4) setStep(step - 1);
   };
 
   const toggleSelection = (field, value) => {
@@ -65,7 +65,7 @@ export default function SetupWizard() {
     <div style={styles.container} className="animate-fade-in">
       {/* Progress Indicator */}
       <div style={styles.progressContainer}>
-        {[1, 2, 3, 4, 5].map(s => (
+        {[1, 2, 3, 4].map(s => (
           <div
             key={s}
             style={{
@@ -80,7 +80,7 @@ export default function SetupWizard() {
       <div style={styles.card} className="glass-card animate-slide-up">
         {step === 1 && (
           <div>
-            <span style={styles.stepNum}>1 / 5</span>
+            <span style={styles.stepNum}>1 / 4</span>
             <h2 className="text-serif" style={styles.title}>Your Family</h2>
             <p style={styles.desc}>Set your profile. Example: Sharma Family West Bengal Non-Veg.</p>
             <input
@@ -112,7 +112,7 @@ export default function SetupWizard() {
 
         {step === 2 && (
           <div>
-            <span style={styles.stepNum}>2 / 5</span>
+            <span style={styles.stepNum}>2 / 4</span>
             <h2 className="text-serif" style={styles.title}>Regional Palate</h2>
             <p style={styles.desc}>Locks recipes and RAG to your tastes.</p>
             <div style={styles.verticalList}>
@@ -144,7 +144,7 @@ export default function SetupWizard() {
 
         {step === 3 && (
           <div>
-            <span style={styles.stepNum}>3 / 5</span>
+            <span style={styles.stepNum}>3 / 4</span>
             <h2 className="text-serif" style={styles.title}>Diet</h2>
             <p style={styles.desc}>RAG and suggestions respect this strictly.</p>
             <div style={styles.verticalList}>
@@ -174,7 +174,7 @@ export default function SetupWizard() {
 
         {step === 4 && (
           <div>
-            <span style={styles.stepNum}>4 / 5</span>
+            <span style={styles.stepNum}>4 / 4</span>
             <h2 className="text-serif" style={styles.title}>Culinary Archetype</h2>
             <p style={styles.desc}>Transforms every recipe via RAG + persona. Your superpower.</p>
             <div style={styles.verticalList}>
@@ -200,57 +200,8 @@ export default function SetupWizard() {
           </div>
         )}
 
-        {step === 5 && (
-          <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
-            <span style={styles.stepNum}>5 / 5</span>
-            <h2 className="text-serif" style={styles.title}>Interests</h2>
-            
-            <p style={styles.label}>Cuisines</p>
-            <div style={styles.tagCloud}>
-              {CUISINES.map(c => {
-                const isSelected = formData.cuisineInterests.includes(c);
-                return (
-                  <button
-                    key={c}
-                    style={{
-                      ...styles.tagBtn,
-                      background: isSelected ? '#E8692A' : '#fff',
-                      color: isSelected ? '#fff' : '#1A0E08',
-                      borderColor: isSelected ? '#E8692A' : 'rgba(74, 44, 26, 0.1)'
-                    }}
-                    onClick={() => toggleSelection('cuisineInterests', c)}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
-
-            <p style={{ ...styles.label, marginTop: '20px' }}>Allergens</p>
-            <div style={styles.tagCloud}>
-              {ALLERGENS.map(alg => {
-                const isSelected = formData.occasions.includes(alg);
-                return (
-                  <button
-                    key={alg}
-                    style={{
-                      ...styles.tagBtn,
-                      background: isSelected ? '#C0392B' : '#fff',
-                      color: isSelected ? '#fff' : '#1A0E08',
-                      borderColor: isSelected ? '#C0392B' : 'rgba(74, 44, 26, 0.1)'
-                    }}
-                    onClick={() => toggleSelection('occasions', alg)}
-                  >
-                    {alg}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Buttons Row */}
-        {step <= 5 && (
+        {step <= 4 && (
           <div style={styles.btnRow}>
             {step > 1 && (
               <button style={styles.secondaryBtn} onClick={handleBack}>
@@ -264,7 +215,7 @@ export default function SetupWizard() {
               }}
               onClick={handleNext}
             >
-              {step === 5 ? 'Start' : 'Next'}
+              {step === 4 ? 'Start' : 'Next'}
             </button>
           </div>
         )}

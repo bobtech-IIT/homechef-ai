@@ -7,6 +7,9 @@ import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
 import { retrieveRelevantKnowledge, formatRAGContext, saveCustomRAGChunk } from '../utils/offlineRAG'; // the offline RAG engine — pure client-side, profile + archetype + inventory aware retrieval. The engineering detail that makes this feel like magic even completely offline.
 
+const CUISINES = ['Punjab 🌾', 'Gujarat 🫓', 'Bangladeshi (East Bengal) 🇧🇩', 'West Bengal 🐟', 'Odisha 🦐🌾', 'Maharashtra 🍛', 'South Indian 🥥', 'Rajasthani 🏜️', 'Italian 🍕', 'Chinese 🍜', 'Mexican 🌮', 'Thai 🌶️'];
+const ALLERGENS = ['Nuts 🥜', 'Dairy 🥛', 'Gluten 🌾', 'Soy 🫘', 'Seafood 🍤'];
+
 const PALATE_NAMES = {
   general: 'Others',
   punjab: 'Punjab',
@@ -95,6 +98,34 @@ export default function AIChatPlanner() {
   const [selectedMeal, setSelectedMeal] = useState('lunch');
   const [toastMessage, setToastMessage] = useState('');
   const [aiStatusLabel, setAiStatusLabel] = useState('Local RAG (no login required)'); // Always zero-login by design
+  const [isPrefOpen, setIsPrefOpen] = useState(false);
+
+  const getMatchingRecipes = (selectedCuisines) => {
+    if (!selectedCuisines || selectedCuisines.length === 0) return [];
+    const cleanCuisines = selectedCuisines.map(c => c.split(' ')[0].toLowerCase());
+    
+    return GRANDMOTHER_RECIPES.filter(recipe => {
+      const rName = recipe.region.toLowerCase();
+      const matchesCuisine = cleanCuisines.some(c => {
+        if (c.includes('bengal')) return rName.includes('bengal') || rName.includes('kolkata');
+        if (c.includes('south')) return rName.includes('kerala') || rName.includes('tamil') || rName.includes('south');
+        return rName.includes(c);
+      });
+      
+      const allergens = profile.occasions || [];
+      const cleanAllergens = allergens.map(a => a.split(' ')[0].toLowerCase());
+      const hasAllergen = cleanAllergens.some(a => {
+        const ingStr = recipe.ingredients.join(' ').toLowerCase();
+        if (a === 'nuts') return ingStr.includes('nut') || ingStr.includes('kaju') || ingStr.includes('almond') || ingStr.includes('peanuts');
+        if (a === 'dairy') return ingStr.includes('milk') || ingStr.includes('paneer') || ingStr.includes('butter') || ingStr.includes('ghee') || ingStr.includes('dahi') || ingStr.includes('cream');
+        if (a === 'gluten') return ingStr.includes('wheat') || ingStr.includes('maida') || ingStr.includes('sooji') || ingStr.includes('atta');
+        if (a === 'seafood') return ingStr.includes('fish') || ingStr.includes('prawn') || ingStr.includes('shrimp') || ingStr.includes('crab');
+        return ingStr.includes(a);
+      });
+      
+      return matchesCuisine && !hasAllergen;
+    }).slice(0, 8);
+  };
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -492,6 +523,97 @@ export default function AIChatPlanner() {
               >
                 Save
               </button>
+            )}
+          </div>
+
+          {/* Collapsible Diet & Cuisine Interests Drawer */}
+          <div style={styles.preferencesCollapsible} className="glass-panel">
+            <button 
+              style={styles.collapsibleTrigger} 
+              onClick={() => setIsPrefOpen(!isPrefOpen)}
+            >
+              <span>🍳 Nani's Vault Explorer (Cuisines & Allergens)</span>
+              <span>{isPrefOpen ? '▲' : '▼'}</span>
+            </button>
+            
+            {isPrefOpen && (
+              <div style={styles.collapsibleContent} className="no-scrollbar animate-fade-in">
+                <p style={styles.sectionLabel}>Select Cuisines to talk to Nani:</p>
+                <div style={styles.tagCloud}>
+                  {CUISINES.map(c => {
+                    const isSelected = (profile.cuisineInterests || []).includes(c);
+                    return (
+                      <button
+                        key={c}
+                        style={{
+                          ...styles.tagBtn,
+                          background: isSelected ? '#E8692A' : '#fff',
+                          color: isSelected ? '#fff' : '#1A0E08',
+                          borderColor: isSelected ? '#E8692A' : 'rgba(74, 44, 26, 0.15)'
+                        }}
+                        onClick={() => {
+                          const current = profile.cuisineInterests || [];
+                          const updated = current.includes(c) ? current.filter(item => item !== c) : [...current, c];
+                          dispatch({ type: 'UPDATE_PROFILE', payload: { cuisineInterests: updated } });
+                        }}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p style={{ ...styles.sectionLabel, marginTop: '14px' }}>Allergens (Nani will filter these out):</p>
+                <div style={styles.tagCloud}>
+                  {ALLERGENS.map(alg => {
+                    const isSelected = (profile.occasions || []).includes(alg);
+                    return (
+                      <button
+                        key={alg}
+                        style={{
+                          ...styles.tagBtn,
+                          background: isSelected ? '#C0392B' : '#fff',
+                          color: isSelected ? '#fff' : '#1A0E08',
+                          borderColor: isSelected ? '#C0392B' : 'rgba(74, 44, 26, 0.15)'
+                        }}
+                        onClick={() => {
+                          const current = profile.occasions || [];
+                          const updated = current.includes(alg) ? current.filter(item => item !== alg) : [...current, alg];
+                          dispatch({ type: 'UPDATE_PROFILE', payload: { occasions: updated } });
+                        }}
+                      >
+                        {alg}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Matching Recipes Collection section */}
+                <div style={styles.recipeCollectionSection}>
+                  <p style={{ ...styles.sectionLabel, marginTop: '16px', fontWeight: '800', color: '#C4501A' }}>
+                    📖 Curated Heirloom Recipe Collections:
+                  </p>
+                  <div style={styles.recipeLinksCloud}>
+                    {getMatchingRecipes(profile.cuisineInterests || []).map(recipe => (
+                      <button
+                        key={recipe.id}
+                        style={styles.recipeLinkBtn}
+                        onClick={() => {
+                          handleSend(`Show me step-by-step recipe for ${recipe.name}`);
+                          setIsPrefOpen(false); // Close preferences on selection
+                        }}
+                      >
+                        👩‍🍳 {recipe.name} ({recipe.region})
+                      </button>
+                    ))}
+                    {getMatchingRecipes(profile.cuisineInterests || []).length === 0 && (
+                      <p style={{ fontSize: '12.5px', color: '#7A5540', fontStyle: 'italic' }}>
+                        Select a regional cuisine above to show Nani's traditional recipe collection!
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -961,6 +1083,81 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  preferencesCollapsible: {
+    background: '#FFFDF9',
+    borderBottom: '1px solid rgba(74, 44, 26, 0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    zIndex: 9
+  },
+  collapsibleTrigger: {
+    width: '100%',
+    padding: '12px 20px',
+    background: 'none',
+    border: 'none',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '13.5px',
+    fontWeight: '700',
+    color: '#E8692A',
+    cursor: 'pointer',
+    outline: 'none',
+    transition: 'background-color 0.2s'
+  },
+  collapsibleContent: {
+    padding: '0 20px 18px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: '260px',
+    overflowY: 'auto',
+    gap: '10px',
+    borderTop: '1px dashed rgba(74, 44, 26, 0.08)'
+  },
+  sectionLabel: {
+    fontSize: '12.5px',
+    fontWeight: '700',
+    color: '#4A2C1A',
+    margin: '8px 0 2px 0',
+    textAlign: 'left'
+  },
+  tagCloud: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px'
+  },
+  tagBtn: {
+    padding: '6px 12px',
+    borderRadius: '16px',
+    border: '1px solid',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease'
+  },
+  recipeCollectionSection: {
+    textAlign: 'left',
+    marginTop: '6px'
+  },
+  recipeLinksCloud: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginTop: '6px'
+  },
+  recipeLinkBtn: {
+    background: '#FEF3DC',
+    border: '1px solid rgba(232, 105, 42, 0.15)',
+    borderRadius: '12px',
+    padding: '8px 12px',
+    fontSize: '12.5px',
+    fontWeight: '600',
+    color: '#C4501A',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    textAlign: 'left'
   }
 };
 
