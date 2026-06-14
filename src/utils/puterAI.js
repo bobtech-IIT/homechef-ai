@@ -391,9 +391,10 @@ const processQueue = async () => {
     updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
     
     const coreQuery = extractCoreQuery(prompt);
+    const hasGreeted = typeof prompt === 'string' && (prompt.includes('Nani:') || prompt.includes('nani:'));
     const fallback = (coreQuery.toLowerCase().includes('plan') || coreQuery.toLowerCase().includes('menu') || prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
       ? getLocalFallbackRecipe(coreQuery, arch)
-      : getLocalFallbackChat(coreQuery, arch);
+      : getLocalFallbackChat(coreQuery, arch, hasGreeted);
     resolve(fallback, false);
   } catch (err) {
     reject(err);

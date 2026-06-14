@@ -490,7 +490,7 @@ const formatRecipeResponse = (recipe, archetype = 'standard') => {
   return response;
 };
 
-export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
+export const getLocalFallbackChat = (query = '', archetype = 'standard', hasGreeted = false) => {
   const q = query.toLowerCase();
   const archLabel = archetype === 'biohacker' ? 'Biohacker (low-GI / adaptogen)' : 
                     archetype === 'cognitive' ? 'Cognitive (high-protein / brain fuel)' : 'Standard traditional';
@@ -532,6 +532,9 @@ Aap high-protein **Dhaba Style Dal Fry** aur garma-garam roti try karein, ya phi
   }
 
   if (isGreeting) {
+    if (hasGreeted) {
+      return `Haan beta! Main sun rahi hoon. Aaj rasoi me kya banane ka vichar hai? Mujhse bejhijhak poochiye, main offline mode me bhi help karungi! 💛`;
+    }
     const greetExtra = archetype === 'biohacker' 
       ? ' Clean, low-GI choices ke liye best adaptations yaad hain.' 
       : archetype === 'cognitive' 
