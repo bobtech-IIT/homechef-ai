@@ -101,33 +101,36 @@ function appReducer(state, action) {
 }
 
 export function AppProvider({ children }) {
-  const STORAGE_KEY = 'homechef_state_v4'; // Bumped from v3 to break stale "Sharma" cached sessions from prior agent runs. Old key ignored → fresh wizard on first load after update.
+  const STORAGE_KEY = 'homechef_session_state'; // sessionStorage = resets on every new tab/PWA open
 
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE, () => {
     try {
-      // Clean older stale keys once
+      // Clean older stale localStorage keys (one-time migration cleanup)
+      localStorage.removeItem('homechef_state_v4');
       localStorage.removeItem('homechef_state_v3');
       localStorage.removeItem('homechef_state_v2');
       localStorage.removeItem('homechef_state');
       
-      const stored = localStorage.getItem(STORAGE_KEY);
+      // Use sessionStorage: state lives only while the tab/PWA is open.
+      // Closing the tab or PWA clears it → next open starts fresh Setup Wizard.
+      const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        console.log('📦 Loaded existing state from localStorage:', parsed);
+        console.log('📦 Restored session state:', parsed);
         return parsed;
       }
-      console.log('🧹 No cached state found. Starting fresh Setup Wizard!');
+      console.log('🧹 New session — starting fresh Setup Wizard!');
     } catch (e) {
-      console.warn('Failed to load local storage state:', e);
+      console.warn('Failed to load session state:', e);
     }
     return INITIAL_STATE;
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      console.warn('LocalStorage save failed:', e);
+      console.warn('SessionStorage save failed:', e);
     }
   }, [state]);
 

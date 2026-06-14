@@ -90,12 +90,11 @@ export default function SettingsPanel({ isOpen, onClose }) {
       setResetConfirm(true);
     } else {
       dispatch({ type: 'RESET_ALL' });
-      localStorage.removeItem('homechef_state_v4');
-      localStorage.removeItem('homechef_ai_cache_v2'); // correct key (v2 used by puterAI)
-      clearAICache(); // also invoke exported for status side-effects + logs
+      sessionStorage.removeItem('homechef_session_state');
+      localStorage.removeItem('homechef_ai_cache_v2');
+      clearAICache();
       setResetConfirm(false);
       onClose();
-      // Reload to restart Setup Wizard
       window.location.reload();
     }
   };
