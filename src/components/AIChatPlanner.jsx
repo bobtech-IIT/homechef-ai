@@ -325,6 +325,8 @@ export default function AIChatPlanner() {
       * Lucknowi / Awadhi Biryani does NOT use tomatoes ("tamatar") or tomato paste, and does NOT use mustard oil. It strictly uses pure ghee, yogurt (dahi), saffron (kesar), and kewra.
       * Tambda Rassa (spicy red broth) and Pandhra Rassa (white coconut/bone broth) are two separate, opposing mutton broths served in Kolhapur. They must NEVER be combined or conflated into a single dish or gravy, and they do not use jaggery (gur) or tamarind pulp. Explain them as two separate dishes.
       * Galouti Kebab uses kachcha papita (raw papaya paste) for tenderizing, never roasted or crumbled papadum.
+      * Mutton Hariyali (Hariyali Mutton / Hara Mutton) is a North Indian dish — Mughal and Delhi / UP cuisine. It does NOT use grated coconut (nariyal). Do NOT attribute it to Maharashtra. Its base is: hara dhania + pudina + hara mirch + dahi + adrak-lahsun paste + whole spices. No coconut.
+      * When describing roti sealing steps, use "band kar dein" or "seal kar dein", not "ghoolein" (which means dissolve/swirl and is incorrect).
     
     STRICT FORMAT ENFORCEMENTS:
     - Keep your advice clean and beautifully structured.

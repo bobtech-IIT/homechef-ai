@@ -167,7 +167,7 @@ const callOpenAICompatible = async (url, apiKey, model, messages) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, messages, temperature: 0.75, max_tokens: 900 }),
+      body: JSON.stringify({ model, messages, temperature: 0.75, max_tokens: 1600 }),
     });
     clearTimeout(tid);
     if (res.status === 401) throw new Error('invalid_api_key');
@@ -200,7 +200,7 @@ const callGemini = async (apiKey, model, messages) => {
       body: JSON.stringify({
         contents,
         ...(systemMsg && { systemInstruction: { parts: [{ text: systemMsg.content }] } }),
-        generationConfig: { temperature: 0.75, maxOutputTokens: 900 },
+        generationConfig: { temperature: 0.75, maxOutputTokens: 1600 },
       }),
     });
     clearTimeout(tid);
