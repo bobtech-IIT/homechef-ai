@@ -282,6 +282,13 @@ const callPuterREST = async () => {
             (window.puter && (window.puter.authToken || window.puter.token)) || null;
   } catch { /* ignore */ }
 
+  console.log("🔍 DEBUG [callPuterREST] token found:", token);
+  console.log("🔍 DEBUG [callPuterREST] window.puter:", window.puter ? {
+    authToken: window.puter.authToken,
+    token: window.puter.token,
+    isSignedIn: typeof window.puter.auth?.isSignedIn === 'function' ? window.puter.auth.isSignedIn() : 'N/A'
+  } : "undefined");
+
   const headers = { 'Content-Type': 'application/json' };
   if (token && token !== 'null' && token !== 'undefined') {
     headers['Authorization'] = `Bearer ${token}`;
@@ -292,35 +299,23 @@ const callPuterREST = async () => {
 };
 
 const callPuterWithMessages = async (messages) => {
-  const headers = await callPuterREST();
+  if (!window.puter || !window.puter.ai) {
+    throw new Error('Puter SDK not loaded yet');
+  }
   let lastErr = null;
 
   for (let i = 0; i < PUTER_FALLBACK_MODELS.length; i++) {
     const model = PUTER_FALLBACK_MODELS[i];
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      console.log(`🤖 Puter REST guest trying: ${model}${i > 0 ? ` (fallback ${i})` : ''}...`);
-      const res = await fetch('https://api.puter.com/puterai/openai/v1/chat/completions', {
-        method: 'POST', 
-        headers, 
-        signal: ctrl.signal,
-        body: JSON.stringify({ model, messages, temperature: 0.75, max_tokens: 900 }),
-      });
-      clearTimeout(tid);
-      if (res.status === 401 || res.status === 402 || res.status === 429) {
-        throw new Error(`model_blocked_${res.status}`);
-      }
-      if (!res.ok) { const t = await res.text(); throw new Error(`http_${res.status}: ${t.slice(0, 80)}`); }
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content;
+      console.log(`🤖 Puter SDK trying: ${model}${i > 0 ? ` (fallback ${i})` : ''}...`);
+      const r = await window.puter.ai.chat(messages, { model });
+      const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
       if (!content) throw new Error('empty_response');
       updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
       return content;
     } catch (err) {
-      clearTimeout(tid);
       lastErr = err;
-      console.warn(`Puter REST: Model ${model} failed:`, err.message || err);
+      console.warn(`Puter SDK: Model ${model} failed:`, err.message || err);
     }
   }
   throw lastErr || new Error('All Puter fallback models exhausted');
