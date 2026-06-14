@@ -402,7 +402,7 @@ Aapke offline record ke mutabik sabhi items safe hain. Agar aapko koi specific i
   if (q.includes('diet') || q.includes('health') || q.includes('restriction') || q.includes('parhez')) {
     return `Diet lock system active! 🛡️
 
-Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarati select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
+Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarat select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
   }
 
   if (q.includes('bajre') || q.includes('bajra') || (q.includes('haryana') && q.includes('khichdi')) || q.includes('bajre ki khichdi')) {

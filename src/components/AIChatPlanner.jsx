@@ -7,6 +7,17 @@ import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
 import { retrieveRelevantKnowledge, formatRAGContext, saveCustomRAGChunk } from '../utils/offlineRAG'; // the offline RAG engine — pure client-side, profile + archetype + inventory aware retrieval. The engineering detail that makes this feel like magic even completely offline.
 
+const PALATE_NAMES = {
+  general: 'Others',
+  punjab: 'Punjab',
+  gujarat: 'Gujarat',
+  maharashtra: 'Maharashtra',
+  kolkata: 'West Bengal',
+  odisha: 'Odisha',
+  tamilnadu: 'Tamil Nadu',
+  kerala: 'Kerala'
+};
+
 // High-fidelity structured text formatter for Nani's Hinglish responses
 const renderMessageText = (text) => {
   if (!text) return null;
@@ -219,9 +230,9 @@ export default function AIChatPlanner() {
     Speak in a warm, culturally authentic Hinglish style (Hindi words written in English alphabet, mixed with conversational English).
     Aapka tone bilkul dadi-nani jaisa hona chahiye - caring, encouraging, and full of kitchen wisdom.
     Use terms like 'Beta', 'Koi Baat Nahi!', 'Shubh Bhojan!'.
-    Current Family Profile: Regional Palate is ${profile.regionalPalate} Style, Diet Preference is ${profile.dietType}.
+    Current Family Profile: Regional Palate is ${PALATE_NAMES[profile.regionalPalate] || profile.regionalPalate} Style, Diet Preference is ${profile.dietType}.
     Active Pantry Stock: ${activePantryStock || 'No active pantry items recorded.'}
-    Important Lock: If profile is Gujarati or Vegetarian, strictly suggest only 100% vegetarian recipes. Never mention non-veg ingredients.
+    Important Lock: If profile is Gujarat or Vegetarian, strictly suggest only 100% vegetarian recipes. Never mention non-veg ingredients.
     ${archetypeInstruction}
     ${localContextInjected}
     ${ragInjection}
@@ -230,10 +241,11 @@ export default function AIChatPlanner() {
     - Keep your advice clean and beautifully structured.
     - Write in short paragraphs. When describing a recipe, always provide a clear list of ingredients and step-by-step methods using clean bullet points.
     - Never write long monolithic text clumps. Keep it extremely readable and structured for mobile displays.
-    - Do NOT output any raw markdown asterisks (*) or formatting symbols in plain text. Every bullet must render nicely.`;
+    - Do NOT output any raw markdown asterisks (*) or formatting symbols in plain text. Every bullet must render nicely.
+    - DO NOT repeat your introduction (e.g. "Main aapki Nani...") or say "Namaste beta!"/greetings repeatedly in follow-up messages if you have already greeted the user earlier in the conversation history. Just answer their follow-up questions directly and warmly.`;
 
-    // Format the last 8 messages as a message history array
-    const messages = chatHistory.slice(-8).map(msg => ({
+    // Format the last 20 messages as a message history array
+    const messages = chatHistory.slice(-20).map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'assistant',
       content: msg.text
     }));
@@ -360,9 +372,25 @@ export default function AIChatPlanner() {
   const handleLoadToPlanner = (msgText, index) => {
     let dishName = "Nani's AI Recipe";
     
-    const firstLines = msgText.split('\n')[0].trim();
-    if (firstLines.length > 5 && firstLines.length < 50) {
-      dishName = firstLines.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+    // Attempt 1: Search first 3 lines for bolded recipe name e.g. **Siddu**
+    const firstThreeLines = msgText.split('\n').slice(0, 3);
+    let foundBold = "";
+    for (const line of firstThreeLines) {
+      const boldMatch = line.match(/\*\*([^*]+)\*\*/);
+      if (boldMatch && boldMatch[1].trim().length > 2 && boldMatch[1].trim().length < 40) {
+        foundBold = boldMatch[1].trim();
+        break;
+      }
+    }
+    
+    if (foundBold) {
+      dishName = foundBold.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+    } else {
+      // Attempt 2: Fallback to first line if reasonable length
+      const firstLine = msgText.split('\n')[0].trim();
+      if (firstLine.length > 5 && firstLine.length < 50) {
+        dishName = firstLine.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+      }
     }
 
     const recipeSteps = msgText.split('\n').filter(line => line.trim().length > 0);

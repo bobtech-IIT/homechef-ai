@@ -3,6 +3,17 @@ import { useApp } from '../context/AppContext';
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { queryAI } from '../utils/puterAI';
 
+const PALATE_NAMES = {
+  general: 'Others',
+  punjab: 'Punjab',
+  gujarat: 'Gujarat',
+  maharashtra: 'Maharashtra',
+  kolkata: 'West Bengal',
+  odisha: 'Odisha',
+  tamilnadu: 'Tamil Nadu',
+  kerala: 'Kerala'
+};
+
 const renderMoodText = (text) => {
   if (!text) return null;
   const lines = text.split('\n');
@@ -71,7 +82,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
 
   // Prominent, always-visible Family + Archetype Badge (the "VC sees this and gets it" detail)
   const familyName = profile.familyName ? (profile.familyName.toLowerCase().includes('family') ? profile.familyName : `${profile.familyName} Family`) : 'My Family';
-  const palateBadge = profile.regionalPalate ? profile.regionalPalate : 'Kolkata';
+  const palateBadge = PALATE_NAMES[profile.regionalPalate] || (profile.regionalPalate ? profile.regionalPalate.toUpperCase() : 'West Bengal');
   const dietBadge = profile.dietType || 'Non-Veg';
   const archetypeBadge = profile.culinaryArchetype === 'biohacker' 
     ? 'Biohacker' 
@@ -117,7 +128,13 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
     });
 
     // 3. Filter by regional palate if possible
-    let regionalMatched = eligible.filter(recipe => recipe.region.toLowerCase() === palate);
+    let regionalMatched = eligible.filter(recipe => {
+      const rReg = recipe.region.toLowerCase();
+      if (palate === 'kolkata') {
+        return rReg === 'kolkata' || rReg === 'bengal';
+      }
+      return rReg === palate;
+    });
     
     // 4. For Non-Vegetarian diet, prioritize non-veg dishes in the regional pool if available
     if (profile?.dietType?.includes('Non-Vegetarian') && !isVegOnly) {
@@ -171,9 +188,17 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
         <div style={styles.headerInfo}>
           <span style={styles.familyTag} className="text-micro">FAMILY</span>
           <h1 className="text-serif" style={styles.familyName}>{familyName}</h1>
-          <span style={styles.profileBadge}>
-            {archetypeBadge}
-          </span>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+            <span style={styles.profileBadge}>
+              {archetypeBadge}
+            </span>
+            <span style={{ ...styles.profileBadge, background: '#FEF3DC', color: '#C4501A' }}>
+              {palateBadge}
+            </span>
+            <span style={{ ...styles.profileBadge, background: '#E8F5F0', color: '#0D6E4E' }}>
+              {dietBadge}
+            </span>
+          </div>
           <div style={{ fontSize: '9px', opacity: 0.55, marginTop: '2px' }}>
             Offline RAG + Archetype Engine — every idea transformed for your palate
           </div>

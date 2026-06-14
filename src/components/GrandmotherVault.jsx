@@ -4,7 +4,7 @@ import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import WeeklyPlanner from './WeeklyPlanner';
 import { useApp } from '../context/AppContext';
 
-const REGIONS = ['All', 'Saved (AI)', 'Bangladesh', 'Kolkata', 'Gujarat', 'Punjab', 'Maharashtra', 'Odisha', 'Tamil Nadu', 'Kerala'];
+const REGIONS = ['All', 'Saved (AI)', 'Bangladesh', 'West Bengal', 'Gujarat', 'Punjab', 'Maharashtra', 'Odisha', 'Tamil Nadu', 'Kerala'];
 
 export default function GrandmotherVault() {
   const { state, dispatch } = useApp();
@@ -38,7 +38,14 @@ export default function GrandmotherVault() {
     ? [...customRecipes, ...GRANDMOTHER_RECIPES]
     : selectedRegion === 'Saved (AI)'
       ? customRecipes
-      : GRANDMOTHER_RECIPES.filter(r => r.region.toLowerCase() === selectedRegion.toLowerCase());
+      : GRANDMOTHER_RECIPES.filter(r => {
+          const reg = r.region.toLowerCase();
+          const sel = selectedRegion.toLowerCase();
+          if (sel === 'west bengal') {
+            return reg === 'kolkata' || reg === 'bengal' || reg === 'west bengal';
+          }
+          return reg === sel;
+        });
 
   const filteredNuskhe = HEALTH_DRINKS.filter(hd => {
     // 1. Tab category filter

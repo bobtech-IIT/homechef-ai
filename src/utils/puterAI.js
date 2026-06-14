@@ -50,6 +50,19 @@ const GEMINI_FREE_MODELS = [
   'gemini-1.5-flash-latest',
 ];
 
+const PUTER_FALLBACK_MODELS = [
+  'gpt-5-nano',
+  'gpt-5-mini',
+  'gpt-4o-mini',
+  'claude-sonnet-4-5',
+  'claude-haiku-4-5',
+  'google/gemini-2.5-flash',
+  'google/gemini-2.0-flash',
+  'x-ai/grok-4',
+  'meta-llama/llama-3.3-70b-instruct',
+  'mistral-large-latest',
+];
+
 // ─── Queue & Status ───────────────────────────────────────────────────────────
 let isProcessingQueue = false;
 const requestQueue = [];
@@ -278,34 +291,39 @@ const callPuterREST = async () => {
   return headers; // return headers for use in the retry fn
 };
 
-const callPuterWithMessages = async (messages, attempt = 1) => {
+const callPuterWithMessages = async (messages) => {
   const headers = await callPuterREST();
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    console.log(`🤖 Puter REST guest direct (attempt ${attempt}/${PUTER_RETRIES})...`);
-    const res = await fetch('https://api.puter.com/puterai/openai/v1/chat/completions', {
-      method: 'POST', 
-      headers, 
-      signal: ctrl.signal,
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.75, max_tokens: 900 }),
-    });
-    clearTimeout(tid);
-    if (res.status === 401 || res.status === 402) throw new Error(`puter_blocked_${res.status}`);
-    if (!res.ok) { const t = await res.text(); throw new Error(`puter_${res.status}: ${t.slice(0, 80)}`); }
-    const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error('puter_empty_response');
-    updateAIStatus({ status: 'connected', lastMessage: 'Puter guest ✓' });
-    return content;
-  } catch (err) {
-    clearTimeout(tid);
-    if (attempt < PUTER_RETRIES) {
-      await delay(1500 * attempt);
-      return callPuterWithMessages(messages, attempt + 1);
+  let lastErr = null;
+
+  for (let i = 0; i < PUTER_FALLBACK_MODELS.length; i++) {
+    const model = PUTER_FALLBACK_MODELS[i];
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      console.log(`🤖 Puter REST guest trying: ${model}${i > 0 ? ` (fallback ${i})` : ''}...`);
+      const res = await fetch('https://api.puter.com/puterai/openai/v1/chat/completions', {
+        method: 'POST', 
+        headers, 
+        signal: ctrl.signal,
+        body: JSON.stringify({ model, messages, temperature: 0.75, max_tokens: 900 }),
+      });
+      clearTimeout(tid);
+      if (res.status === 401 || res.status === 402 || res.status === 429) {
+        throw new Error(`model_blocked_${res.status}`);
+      }
+      if (!res.ok) { const t = await res.text(); throw new Error(`http_${res.status}: ${t.slice(0, 80)}`); }
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) throw new Error('empty_response');
+      updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
+      return content;
+    } catch (err) {
+      clearTimeout(tid);
+      lastErr = err;
+      console.warn(`Puter REST: Model ${model} failed:`, err.message);
     }
-    throw err;
   }
+  throw lastErr || new Error('All Puter fallback models exhausted');
 };
 
 // ─── Archetype extractor ──────────────────────────────────────────────────────

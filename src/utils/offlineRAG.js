@@ -43,7 +43,7 @@ function buildIndex() {
       id: `offline-${key}`,
       text,
       meta: {
-        region: (key === 'kolkata' || key === 'bengal') ? 'West Bengal / Kolkata' : key,
+        region: (key === 'kolkata' || key === 'bengal') ? 'West Bengal' : key,
         diet: recipe.isVegetarian ? 'veg' : 'nonveg',
         tags: key.includes('bajre') || key.includes('khichdi') ? ['comfort', 'millet'] : [],
         source: 'offline-core'
@@ -206,8 +206,10 @@ export function retrieveRelevantKnowledge(query = '', profile = {}, inventory = 
       if (textLower.includes(w)) score += 2;
     });
 
-    // Regional boost (very important for cultural authenticity)
-    if (chunk.meta.region.toLowerCase().includes(userRegion) || userRegion.includes(chunk.meta.region.toLowerCase().slice(0, 4))) {
+    const chunkReg = chunk.meta.region.toLowerCase();
+    const isKolkataUser = userRegion === 'kolkata';
+    const isKolkataChunk = chunkReg.includes('kolkata') || chunkReg.includes('bengal') || chunkReg.includes('west bengal');
+    if (chunkReg.includes(userRegion) || userRegion.includes(chunkReg.slice(0, 4)) || (isKolkataUser && isKolkataChunk)) {
       score += 8;
     }
 

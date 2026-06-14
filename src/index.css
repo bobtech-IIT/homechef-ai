@@ -474,4 +474,11 @@ h1, h2, h3, h4, h5, h6 {
   background-color: rgba(74, 44, 26, 0.08);
 }
 
+/* Custom placeholder styling to distinguish from actual values */
+input::placeholder {
+  color: var(--hc-chai) !important;
+  opacity: 0.5;
+}
+
+
 

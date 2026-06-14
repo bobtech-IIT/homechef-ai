@@ -3,6 +3,17 @@ import { useApp } from '../context/AppContext';
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
 
+const PALATE_NAMES = {
+  general: 'Others',
+  punjab: 'Punjab',
+  gujarat: 'Gujarat',
+  maharashtra: 'Maharashtra',
+  kolkata: 'West Bengal',
+  odisha: 'Odisha',
+  tamilnadu: 'Tamil Nadu',
+  kerala: 'Kerala'
+};
+
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 const MEALS = [
   { key: 'breakfast', label: '🍳 Breakfast' },
@@ -216,7 +227,7 @@ export default function WeeklyPlanner() {
                   Weekly Thali Meal Plan for the <strong>{profile.familyName ? (profile.familyName.toLowerCase().includes('family') ? profile.familyName : `${profile.familyName} Family`) : 'My Family'}</strong>
                 </p>
                 <span style={styles.pdfDetails}>
-                  Cuisine Palate: {profile.regionalPalate.toUpperCase()} • Diet type: {profile.dietType}
+                  Cuisine Palate: {(PALATE_NAMES[profile.regionalPalate] || profile.regionalPalate).toUpperCase()} • Diet type: {profile.dietType}
                 </span>
               </div>
 

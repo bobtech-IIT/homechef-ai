@@ -73,6 +73,7 @@ function appReducer(state, action) {
 
     case 'SWAP_MEAL': {
       const { day, mealType, newMeal } = action.payload;
+      console.log('🔄 SWAP_MEAL Action:', day, mealType, newMeal);
       return {
         ...state,
         weeklyPlan: {
@@ -104,17 +105,20 @@ export function AppProvider({ children }) {
 
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE, () => {
     try {
-      // Ephemeral mode: always start completely fresh on app open.
-      localStorage.removeItem(STORAGE_KEY);
+      // Clean older stale keys once
       localStorage.removeItem('homechef_state_v3');
       localStorage.removeItem('homechef_state_v2');
       localStorage.removeItem('homechef_state');
-      localStorage.removeItem('homechef_custom_recipes');
-      localStorage.removeItem('homechef_custom_rag_chunks');
-      localStorage.removeItem('homechef_dynamic_thali_data');
-      console.log('🧹 Headless PWA: Cleared all old cache. Starting completely fresh!');
+      
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('📦 Loaded existing state from localStorage:', parsed);
+        return parsed;
+      }
+      console.log('🧹 No cached state found. Starting fresh Setup Wizard!');
     } catch (e) {
-      console.warn('Failed to clear local storage:', e);
+      console.warn('Failed to load local storage state:', e);
     }
     return INITIAL_STATE;
   });

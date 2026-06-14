@@ -2,6 +2,17 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { clearAICache, getAIStatus, getBYOK, saveBYOK, clearBYOK } from '../utils/puterAI';
 
+const PALATE_NAMES = {
+  general: 'Others',
+  punjab: 'Punjab',
+  gujarat: 'Gujarat',
+  maharashtra: 'Maharashtra',
+  kolkata: 'West Bengal',
+  odisha: 'Odisha',
+  tamilnadu: 'Tamil Nadu',
+  kerala: 'Kerala'
+};
+
 export default function SettingsPanel({ isOpen, onClose }) {
   const { state, dispatch } = useApp();
   const { profile } = state;
@@ -140,7 +151,9 @@ export default function SettingsPanel({ isOpen, onClose }) {
             </div>
             <div style={styles.preferenceRow}>
               <span>Cuisine style:</span>
-              <strong style={{ color: '#E8692A' }}>{profile.regionalPalate.toUpperCase()}</strong>
+              <strong style={{ color: '#E8692A' }}>
+                {(PALATE_NAMES[profile.regionalPalate] || profile.regionalPalate).toUpperCase()}
+              </strong>
             </div>
             <div style={styles.preferenceRow}>
               <span>Size:</span>

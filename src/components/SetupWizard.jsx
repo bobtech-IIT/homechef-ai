@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { seedWeeklyMenu } from '../utils/mealSeeder';
 
-const CUISINES = ['Punjabi 🌾', 'Gujarati 🫓', 'Bangladeshi (East Bengal) 🇧🇩', 'Kolkata (West Bengal) 🐟', 'Oriya 🦐🌾', 'Maharashtrian 🍛', 'South Indian 🥥', 'Rajasthani 🏜️', 'Italian 🍕', 'Chinese 🍜', 'Mexican 🌮', 'Thai 🌶️'];
+const CUISINES = ['Punjab 🌾', 'Gujarat 🫓', 'Bangladeshi (East Bengal) 🇧🇩', 'West Bengal 🐟', 'Odisha 🦐🌾', 'Maharashtra 🍛', 'South Indian 🥥', 'Rajasthani 🏜️', 'Italian 🍕', 'Chinese 🍜', 'Mexican 🌮', 'Thai 🌶️'];
 const ALLERGENS = ['Nuts 🥜', 'Dairy 🥛', 'Gluten 🌾', 'Soy 🫘', 'Seafood 🍤'];
 
 export default function SetupWizard() {
@@ -82,10 +82,10 @@ export default function SetupWizard() {
           <div>
             <span style={styles.stepNum}>1 / 5</span>
             <h2 className="text-serif" style={styles.title}>Your Family</h2>
-            <p style={styles.desc}>Set your profile. Example: Sharma Family Kolkata Non-Veg.</p>
+            <p style={styles.desc}>Set your profile. Example: Sharma Family West Bengal Non-Veg.</p>
             <input
               type="text"
-              placeholder="Sharma Family Kolkata Non-Veg"
+              placeholder="e.g. Sharma Family"
               style={styles.input}
               value={formData.familyName}
               onChange={e => setFormData({ ...formData, familyName: e.target.value })}
@@ -117,11 +117,11 @@ export default function SetupWizard() {
             <p style={styles.desc}>Locks recipes and RAG to your tastes.</p>
             <div style={styles.verticalList}>
               {[
-                { id: 'general', name: 'General Indian' },
-                { id: 'punjab', name: 'Punjabi' },
-                { id: 'gujarat', name: 'Gujarati' },
-                { id: 'maharashtra', name: 'Maharashtrian' },
-                { id: 'kolkata', name: 'Kolkata' },
+                { id: 'general', name: 'Others' },
+                { id: 'punjab', name: 'Punjab' },
+                { id: 'gujarat', name: 'Gujarat' },
+                { id: 'maharashtra', name: 'Maharashtra' },
+                { id: 'kolkata', name: 'West Bengal' },
                 { id: 'odisha', name: 'Odisha' },
                 { id: 'tamilnadu', name: 'Tamil Nadu' },
                 { id: 'kerala', name: 'Kerala' }
