@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Search, Sparkles, MapPin, ChefHat, Compass } from 'lucide-react';
 import { queryAI } from '../utils/puterAI';
 
-const THALI_DATA = {
+export const THALI_DATA = {
   // States (28)
   "Andhra Pradesh": { dish: "Gongura Mutton", tags: ["🔥 SPICY", "MEAT"], desc: "Fiery, tangy prawns or goat meat simmered in sour sorrel leaves (gongura) and Guntur capsaicin. A true Andhra spice bomb." },
   "Arunachal Pradesh": { dish: "Bamboo Shoot Fry & Thukpa", tags: ["🥣 COMFORT", "VEG"], desc: "Comforting, warm noodle soup cooked with fresh local bamboo shoot strips, ginger, and wild herbs, served in mountain wood bowls." },

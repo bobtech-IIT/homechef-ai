@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { queryAI, clearAICache, getAIStatus, triggerPuterGuestOnce } from '../utils/puterAI'; // triggerPuterGuestOnce is now purely opt-in via the "Boost" button only
-import { getLocalFallbackChat } from '../utils/offlineKnowledgeBase'; // for rare catch-path rich fallback
+import { getLocalFallbackChat, checkIfVegetarian, extractDishName } from '../utils/offlineKnowledgeBase'; // for rare catch-path rich fallback
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
+import { THALI_DATA } from './IndianThaliMap';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
 import { retrieveRelevantKnowledge, formatRAGContext, saveCustomRAGChunk } from '../utils/offlineRAG'; // the offline RAG engine — pure client-side, profile + archetype + inventory aware retrieval. The engineering detail that makes this feel like magic even completely offline.
@@ -224,6 +225,56 @@ export default function AIChatPlanner() {
       localContextInjected += `CRITICAL INSTRUCTION: You MUST present this exact health drink formulation from Nani's Nuskhe database using the exact home ingredients. Highlight that it is prepared 100% in a ${matchHealth[0].equipment}.\n`;
     }
 
+    // Load dynamic thali data from localStorage to handle live state updates
+    let currentThaliData = THALI_DATA;
+    try {
+      const saved = localStorage.getItem('homechef_dynamic_thali_data');
+      if (saved) {
+        currentThaliData = { ...THALI_DATA, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.warn('Failed to load dynamic thali data in chat:', e);
+    }
+
+    // Scan if the user query matches a dish from GrandmotherRecipes, InternationalRecipes, or Thali Map
+    let requestedDishRegion = "";
+    let matchedDishName = "";
+    
+    // Check GrandmotherRecipes
+    const dbMatch = GRANDMOTHER_RECIPES.find(r => queryLower.includes(r.name.toLowerCase()));
+    if (dbMatch) {
+      requestedDishRegion = dbMatch.region;
+      matchedDishName = dbMatch.name;
+    } else {
+      // Check InternationalRecipes
+      const intlMatch = INTERNATIONAL_RECIPES.find(r => queryLower.includes(r.name.toLowerCase()));
+      if (intlMatch) {
+        requestedDishRegion = "International";
+        matchedDishName = intlMatch.name;
+      } else {
+        // Check Thali Map Data (dynamic merged thali map)
+        const thaliMatchKey = Object.keys(currentThaliData).find(state => 
+          queryLower.includes(state.toLowerCase()) || 
+          queryLower.includes(currentThaliData[state].dish.toLowerCase())
+        );
+        if (thaliMatchKey) {
+          requestedDishRegion = thaliMatchKey;
+          matchedDishName = currentThaliData[thaliMatchKey].dish;
+        }
+      }
+    }
+
+    let regionOverrideInstruction = "";
+    if (requestedDishRegion) {
+      regionOverrideInstruction = `
+      [CRITICAL REGIONAL OVERRIDE]
+      - The user is explicitly asking for "${matchedDishName}", which is a traditional specialty of "${requestedDishRegion}".
+      - You MUST describe this recipe in its authentic "${requestedDishRegion}" regional style.
+      - Do NOT say "Aapke ${PALATE_NAMES[profile.regionalPalate] || profile.regionalPalate}-style palate ke liye" or adapt the dish name/region to the user's profile region (${PALATE_NAMES[profile.regionalPalate] || profile.regionalPalate}).
+      - Keep the recipe authentic and true to its origins in "${requestedDishRegion}".
+      - IGNORE the family profile's regional palate (${PALATE_NAMES[profile.regionalPalate] || profile.regionalPalate}) completely for this response, and cook it 100% in its authentic "${requestedDishRegion}" style.`;
+    }
+
     // 🧠 Culinary Archetype Injections
     let archetypeInstruction = "";
     const archetype = profile.culinaryArchetype || 'standard';
@@ -262,6 +313,7 @@ export default function AIChatPlanner() {
     Active Pantry Stock: ${activePantryStock || 'No active pantry items recorded.'}
     Important Lock: If profile is Gujarat or Vegetarian, strictly suggest only 100% vegetarian recipes. Never mention non-veg ingredients.
     ${archetypeInstruction}
+    ${regionOverrideInstruction}
     ${localContextInjected}
     ${ragInjection}
     
@@ -285,25 +337,12 @@ export default function AIChatPlanner() {
       
       // Auto-save recipe to offline RAG chunks
       if (containsRecipeIndicators(response)) {
-        let dishName = "Nani's AI Recipe";
-        const boldMatches = response.match(/\*\*([^*]+)\*\*/);
-        if (boldMatches && boldMatches[1] && boldMatches[1].trim().length > 3 && boldMatches[1].trim().length < 50) {
-          dishName = boldMatches[1].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
-        } else {
-          const lines = response.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-          for (const line of lines) {
-            const cleanLine = line.replace(/[#*.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
-            if (cleanLine.length > 3 && cleanLine.length < 50 && !cleanLine.toLowerCase().includes('namaste') && !cleanLine.toLowerCase().includes('beta') && !cleanLine.toLowerCase().includes('hello') && !cleanLine.toLowerCase().includes('hey')) {
-              dishName = cleanLine;
-              break;
-            }
-          }
-        }
+        const dishName = extractDishName(response, userText);
         saveCustomRAGChunk(
           dishName, 
           response, 
           profile.regionalPalate || 'Indian', 
-          !(profile?.dietType || 'Vegetarian 🌱').toLowerCase().includes('non-') ? 'veg' : 'nonveg'
+          checkIfVegetarian(dishName, response) ? 'veg' : 'nonveg'
         );
       }
       
@@ -407,30 +446,12 @@ export default function AIChatPlanner() {
 
   // Direct injection to Weekly Planner state
   const handleLoadToPlanner = (msgText, index) => {
-    let dishName = "Nani's AI Recipe";
-    
-    // Attempt 1: Search first 3 lines for bolded recipe name e.g. **Siddu**
-    const firstThreeLines = msgText.split('\n').slice(0, 3);
-    let foundBold = "";
-    for (const line of firstThreeLines) {
-      const boldMatch = line.match(/\*\*([^*]+)\*\*/);
-      if (boldMatch && boldMatch[1].trim().length > 2 && boldMatch[1].trim().length < 40) {
-        foundBold = boldMatch[1].trim();
-        break;
-      }
-    }
-    
-    if (foundBold) {
-      dishName = foundBold.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-    } else {
-      // Attempt 2: Fallback to first line if reasonable length
-      const firstLine = msgText.split('\n')[0].trim();
-      if (firstLine.length > 5 && firstLine.length < 50) {
-        dishName = firstLine.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-      }
-    }
+    const prevMsg = index > 0 ? chatHistory[index - 1] : null;
+    const userPrompt = prevMsg && prevMsg.sender === 'user' ? prevMsg.text : '';
+    const dishName = extractDishName(msgText, userPrompt);
 
     const recipeSteps = msgText.split('\n').filter(line => line.trim().length > 0);
+    const isVeg = checkIfVegetarian(dishName, msgText);
 
     dispatch({
       type: 'SWAP_MEAL',
@@ -440,7 +461,7 @@ export default function AIChatPlanner() {
         newMeal: {
           id: `ai_custom_${index}`,
           name: dishName,
-          isVegetarian: !(profile?.dietType || 'Vegetarian 🌱').toLowerCase().includes('non-') || (profile?.regionalPalate || 'general') === 'gujarat',
+          isVegetarian: isVeg,
           category: selectedMeal,
           region: profile?.regionalPalate || 'Indian',
           ingredients: ['Ingredients suggested in Nani\'s chat'],

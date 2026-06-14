@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
+import { checkIfVegetarian } from '../utils/offlineKnowledgeBase';
 
 const PALATE_NAMES = {
   general: 'Others',
@@ -58,7 +59,7 @@ export default function WeeklyPlanner() {
         newMeal: {
           id: chosenAlternative.id,
           name: chosenAlternative.name,
-          isVegetarian: chosenAlternative.isVegetarian,
+          isVegetarian: chosenAlternative.isVegetarian !== undefined ? chosenAlternative.isVegetarian : checkIfVegetarian(chosenAlternative.name, chosenAlternative.steps),
           category: mealType,
           region: chosenAlternative.region || 'Indian',
           ingredients: chosenAlternative.ingredients || [],
@@ -140,7 +141,7 @@ export default function WeeklyPlanner() {
       {/* Selected Day's Meals */}
       <div style={styles.mealsContainer}>
         {MEALS.map(meal => {
-          const plannedMeal = weeklyPlan[activeDay]?.[meal.key] || { name: 'Simple Healthy Thali' };
+          const plannedMeal = weeklyPlan[activeDay]?.[meal.key] || { name: 'Simple Healthy Thali', isVegetarian: true };
           return (
             <div key={meal.key} style={styles.mealCard} className="glass-card animate-pop">
               <div style={styles.mealHeader}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { clearAICache, getAIStatus, getBYOK, saveBYOK, clearBYOK } from '../utils/puterAI';
+import { seedWeeklyMenu } from '../utils/mealSeeder';
 
 const PALATE_NAMES = {
   general: 'Others',
@@ -72,9 +73,18 @@ export default function SettingsPanel({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleDietChange = (e) => {
+    const newDiet = e.target.value;
+    const updatedProfile = { ...profile, dietType: newDiet };
     dispatch({
       type: 'UPDATE_PROFILE',
-      payload: { dietType: e.target.value }
+      payload: { dietType: newDiet }
+    });
+    
+    // Dynamically re-seed weekly plan on diet update
+    const reseededPlan = seedWeeklyMenu(updatedProfile);
+    dispatch({
+      type: 'SEED_WEEKLY_PLAN',
+      payload: reseededPlan
     });
   };
 

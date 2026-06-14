@@ -302,7 +302,7 @@ export default function HomeDashboard({ onNavigateToTab, onOpenThaliMap }) {
           { key: 'dinner', label: '🌙 DINNER', time: '08:30 PM' }
         ].map(meal => {
           const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-          const plannedMeal = weeklyPlan[today]?.[meal.key] || { name: 'Simple Healthy Thali' };
+          const plannedMeal = weeklyPlan[today]?.[meal.key] || { name: 'Simple Healthy Thali', isVegetarian: true };
           return (
             <div key={meal.key} style={styles.timelineNode}>
               <div style={styles.timelineLeft}>

@@ -229,8 +229,6 @@ const OFFLINE_RECIPES = {
     isVegetarian: true,
     story: "The universal Indian healing comfort bowl, loved across all states."
   },
-
-  // === Extra recipes for richer offline RAG (added for depth & archetype coverage) ===
   rajasthan: {
     name: "Dal Baati Churma (Cognitive Fuel Version)",
     ingredients: [
@@ -251,7 +249,6 @@ const OFFLINE_RECIPES = {
     isVegetarian: true,
     story: "Rajasthan's royal endurance meal. The high-protein + sustained carb version is perfect for long thinking sessions or Shark-Tank-level hustle."
   },
-
   kerala_bio: {
     name: "Nadan Avial (Bio-Hacker Clean)",
     ingredients: [
@@ -272,7 +269,6 @@ const OFFLINE_RECIPES = {
     isVegetarian: true,
     story: "Kerala's classic made bio-hacker friendly — minimal oil, maximum micronutrients and gut health. Zen plating in a traditional uruli feels elevated."
   },
-
   punjab_cognitive: {
     name: "Sarson ka Saag + Makki di Roti (High-Protein Brain Version)",
     ingredients: [
@@ -295,6 +291,7 @@ const OFFLINE_RECIPES = {
 };
 
 export { OFFLINE_RECIPES };
+
 /**
  * 🗺️ Layer 5 Fallback: Region-Matched Recipe Engine (archetype-aware for bio/cognitive variants)
  */
@@ -341,8 +338,6 @@ export const getLocalFallbackRecipe = (query = '', archetype = 'standard') => {
   return recipeText;
 };
 
-
-
 /**
  * 💬 Layer 5 Fallback: Smart Chat Response Generator (now RAG-powered)
  * Searches ALL recipe databases by keyword matching and returns formatted results.
@@ -352,6 +347,7 @@ export const getLocalFallbackRecipe = (query = '', archetype = 'standard') => {
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { HEALTH_DRINKS } from '../data/HealthDrinks';
 import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
+import { THALI_DATA } from '../components/IndianThaliMap';
 
 // Build a single flat searchable pool from all sources
 const _buildSearchPool = () => {
@@ -501,33 +497,33 @@ export const getLocalFallbackChat = (query = '', archetype = 'standard', hasGree
   // Mood Specific Fallbacks
   if (q.includes('tired') || q.includes('thake')) {
     return `Koi baat nahi beta! Aise thake hue mood me bilkul halka aur jaldi banne wala khana hona chahiye. 
-
+ 
 Aap hamare local cookbook se **Classic Kanda Batata Poha** (sirf 15 min) ya ek garam cup **Moong Dal Khichdi** try kar sakte hain. Dono hi comfort food hain aur body ko bina heavy feel karaye fresh energy denge! 
-
+ 
 Garam-garam piyo aur thoda aaram karo! 💛`;
   }
   
   if (q.includes('comfort') || q.includes('bimaar')) {
     return `Arey beta, sehat sabse pehle hai! Jab mood ya body comfort maange, toh dadi ki rasoi se garam-garam **Moong Dal Khichdi** se behtar kuch nahi. 
-
+ 
 Yeh pachan me halki hoti hai aur body ko heal karti hai. Isme thoda ghee dalna mat bhoolna. Kuch hi samay me bilkul fresh feel karoge! 🍲`;
   }
   
   if (q.includes('detox') || q.includes('halka')) {
     return `Apne system ko detox aur halka rakhna bohot zaroori hai beta! 
-
+ 
 Dadi ka nuskha hai ki aaj ke din bilkul light vegetable stew ya **Odia Dalma** banayein jisme dher saari papita aur lauki ho. Yeh pachan ko shant rakhegi aur toxins ko clear queue se nikalege! 🍃`;
   }
   
   if (q.includes('celebrat') || q.includes('khush')) {
     return `Waah beta! Khushi ka din hai toh khana bhi utsav jaisa hona chahiye! 🎉
-
+ 
 Aap traditional feast me **Bangladeshi Bhuna Khichuri** with begun bhaja try kar sakte hain, ya phir **Kolkata Aloo Posto** ke sath garma-garam dal-chawal. Khushi ke is mauke par swad aur badh jayega!`;
   }
   
   if (q.includes('energet') || q.includes('active')) {
     return `⚡ Shabaash beta! Aise energetic aur active feel karne par toh dher saari energy dene wala khana banna chahiye. 
-
+ 
 Aap high-protein **Dhaba Style Dal Fry** aur garma-garam roti try karein, ya phir badam/coconut powder sprinkled poha. Yeh energy level ko long time tak high rakhega!`;
   }
 
@@ -541,21 +537,21 @@ Aap high-protein **Dhaba Style Dal Fry** aur garma-garam roti try karein, ya phi
         ? ' Brain fuel aur high-protein ideas ke liye best versions ready hain.' 
         : '';
     return `Namaste beta! Main aapki **Nani - Rasoi Saathi** hoon. 🍳 
-
+ 
 Local intelligence + archetype power se har baar ghar jaisa step-by-step jawab deta hoon — Haryana, Bengal, Punjab, Kerala, sab regions ke liye. ${archLabel} mode active hai.${greetExtra}
-
+ 
 Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
   }
 
   if (q.includes('expir') || q.includes('inventory') || q.includes('samaan') || q.includes('kharab')) {
     return `Inventory warning system checking... 🫙
-
+ 
 Aapke offline record ke mutabik sabhi items safe hain. Agar aapko koi specific item use karna hai (jaise Coriander, Tomatoes), toh mujhe batayein, main uske hisab se offline database se swadisht matching recipe dhoondh nikalunga!`;
   }
 
   if (q.includes('diet lock') || q.includes('diet preference') || q.includes('restriction') || q.includes('parhez')) {
     return `Diet lock system active! 🛡️
- 
+  
  Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarat select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
   }
 
@@ -583,9 +579,9 @@ Aapke offline record ke mutabik sabhi items safe hain. Agar aapko koi specific i
   const randomRecipe = pool[randomIdx];
   
   return `Ji bilkul beta! (${archLabel})
-
+ 
 Aapki request ke liye exact match nahi mila offline database mein, lekin yeh lo — ek swadisht recipe jo aapko pasand aayegi:
-
+ 
 **🍽️ ${randomRecipe.name}**
 ${randomRecipe.story ? `*${randomRecipe.story}*\n` : ''}
 ${randomRecipe.ingredients.length > 0 ? '**📝 Ingredients:**\n' + randomRecipe.ingredients.slice(0, 8).map(i => '• ' + i).join('\n') + '\n' : ''}
@@ -593,3 +589,82 @@ ${randomRecipe.steps.length > 0 ? '\n**👩‍🍳 Steps:**\n' + randomRecipe.st
 Koi specific recipe chahiye toh dish ka naam likho — main database mein dhoondh dungi! Shubh bhojan beta! 💛`;
 };
 
+/**
+ * Helper to dynamically determine if a recipe is vegetarian based on name & details
+ */
+export const checkIfVegetarian = (name = '', context = '') => {
+  const nonVegKeywords = [
+    'chicken', 'mutton', 'fish', 'prawn', 'shrimp', 'crab', 'egg', 'meat', 
+    'beef', 'pork', 'lamb', 'seafood', 'chingri', 'maach', 'mangsho', 'murgh', 
+    'kabab', 'keema', 'yera', 'ilish', 'rohu', 'katla', 'chingri', 'non-veg'
+  ];
+  const testStr = `${name} ${typeof context === 'string' ? context : JSON.stringify(context)}`.toLowerCase();
+  return !nonVegKeywords.some(keyword => testStr.includes(keyword));
+};
+
+/**
+ * Robust extraction of recipe name using multi-tiered scanning of user query and response text
+ */
+export const extractDishName = (msgText = '', userPrompt = '') => {
+  const ignoredWords = [
+    'ingredients', 'saamagri', 'method', 'step', 'vidhi', 'region', 
+    'cook time', 'difficulty', 'parosna', 'sevan', 'tips', 'note', 'tip', 
+    'recipe', 'vidh', 'servings', 'instruction', 'garnish', 'serving', 
+    'namaste', 'beta', 'hello', 'hey', 'nani', 'rasoi', 'saathi', 'bhojan',
+    'shubh', 'afsos', 'maaf', 'dadi'
+  ];
+
+  // Tier 1: Look for quoted text in the user's prompt (usually the requested dish)
+  if (userPrompt) {
+    const quoteMatch = userPrompt.match(/["'“‘]([^"'“”‘]+)["'”’]/);
+    if (quoteMatch && quoteMatch[1] && quoteMatch[1].trim().length > 2 && quoteMatch[1].trim().length < 50) {
+      const candidate = quoteMatch[1].trim();
+      if (!ignoredWords.some(w => candidate.toLowerCase().includes(w))) {
+        return candidate.replace(/[#*.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+      }
+    }
+  }
+
+  // Tier 2: Check if the user prompt matches any known dish name in the database
+  if (userPrompt) {
+    const promptLower = userPrompt.toLowerCase();
+    
+    // Check Grandmother Recipes
+    const gmMatch = GRANDMOTHER_RECIPES.find(r => promptLower.includes(r.name.toLowerCase()));
+    if (gmMatch) return gmMatch.name;
+
+    // Check International Recipes
+    const intlMatch = INTERNATIONAL_RECIPES.find(r => promptLower.includes(r.name.toLowerCase()));
+    if (intlMatch) return intlMatch.name;
+
+    // Check Thali Map Data
+    const thaliMatchKey = Object.keys(THALI_DATA).find(state => 
+      promptLower.includes(state.toLowerCase()) || 
+      promptLower.includes(THALI_DATA[state].dish.toLowerCase())
+    );
+    if (thaliMatchKey) return THALI_DATA[thaliMatchKey].dish;
+  }
+
+  // Tier 3: Scan the AI message text for bold text e.g. **Siddu**
+  const boldMatches = [...msgText.matchAll(/\*\*([^*]+)\*\*/g)];
+  for (const match of boldMatches) {
+    const candidate = match[1].trim();
+    const candLower = candidate.toLowerCase();
+    if (candidate.length > 2 && candidate.length < 50 && !ignoredWords.some(w => candLower.includes(w))) {
+      return candidate.replace(/[#*.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+    }
+  }
+
+  // Tier 4: Fallback to the first short line of the AI response that isn't a greeting
+  const lines = msgText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  for (const line of lines) {
+    const cleanLine = line.replace(/[#*.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+    const lowerLine = cleanLine.toLowerCase();
+    if (cleanLine.length > 3 && cleanLine.length < 50 && 
+        !ignoredWords.some(w => lowerLine.includes(w))) {
+      return cleanLine;
+    }
+  }
+
+  return "Nani's AI Recipe";
+};
