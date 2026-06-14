@@ -111,7 +111,7 @@ export default function AIChatPlanner() {
       const s = getAIStatus();
       const online = navigator.onLine ? 'online' : 'offline';
       let base = `Local RAG + Archetype (no login)`;
-      if (s.status === 'connected') base = `Puter Live Boost Active`;
+      if (s.status === 'connected') base = `Puter Guest Live Active`;
       else if (s.status === 'byok') base = `BYOK Active (${s.lastMessage})`;
       else if (s.status === 'cached') base = `Cached + Local RAG (no login)`;
       else if (s.status === 'offline-kb') base = `Rich Local RAG (zero login)`;
@@ -470,11 +470,11 @@ export default function AIChatPlanner() {
                     onClick={async () => {
                       const activated = await triggerPuterGuestOnce();
                       refreshAIStatusLabel();
-                      setToastMessage(activated ? 'Puter Serverless Boost enabled' : 'Using rich local RAG (no login)');
+                      setToastMessage(activated ? 'Puter Guest Boost enabled' : 'Using rich local RAG (no login)');
                       setTimeout(() => setToastMessage(''), 3200);
                     }}
                     style={{ marginLeft: '6px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: '#FEF3DC', color: '#C4501A', borderRadius: '4px', cursor: 'pointer' }}
-                    title="Optional: Activate Puter Live Boost for live AI (no login, no popups)"
+                    title="Optional: Activate Puter Guest Boost for live AI (no login, no popups)"
                   >
                     Boost
                   </button>

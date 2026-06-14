@@ -284,71 +284,26 @@ const callBYOK = async (messages, byok) => {
   throw new Error(`Unknown provider: ${provider}`);
 };
 
-// ─── Puter Direct REST (No popup, no login, client-side only) ───────────────────
-const callPuterDirect = async (messages) => {
-  let token = null;
-  try {
-    token = localStorage.getItem('puter.auth.token') ||
-            localStorage.getItem('puter.auth.token.v2') ||
-            (window.puter && (window.puter.authToken || window.puter.token)) || null;
-  } catch { /* ignore */ }
-
-  const headers = { 'Content-Type': 'application/json' };
-  if (token && token !== 'null' && token !== 'undefined') {
-    headers['Authorization'] = `Bearer ${token}`;
+// ─── Puter SDK Client (No popup visible, suppressed via CSS) ──────────────────────
+const callPuterSDK = async (messages) => {
+  if (!window.puter || !window.puter.ai) {
+    throw new Error('Puter SDK not loaded yet');
   }
 
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-
+  // Try ONLY Puter's default free model (gpt-5-nano) using the browser SDK.
+  // If credits are exhausted, the SDK will try to inject the auth modal,
+  // which is completely hidden and neutralized via CSS in index.css.
+  // Catching this error immediately allows the app to cascade straight to Offline RAG.
+  const model = 'gpt-5-nano';
   try {
-    console.log('📡 Calling Puter REST API directly from browser client...');
-    let res = await fetch('https://api.puter.com/puterai/openai/v1/chat/completions', {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers,
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        temperature: 0.75,
-      })
-    });
-
-    // If token is invalid/expired (401), retry keyless
-    if (res.status === 401 && headers['Authorization']) {
-      console.warn('🔑 Client token unauthorized/expired, retrying keyless...');
-      delete headers['Authorization'];
-      res = await fetch('https://api.puter.com/puterai/openai/v1/chat/completions', {
-        method: 'POST',
-        signal: ctrl.signal,
-        headers,
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages,
-          temperature: 0.75,
-        })
-      });
-    }
-
-    clearTimeout(tid);
-
-    if (res.status === 402 || res.status === 401) {
-      throw new Error(`puter_limit_${res.status}`);
-    }
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`puter_error_${res.status}: ${errText.slice(0, 100)}`);
-    }
-
-    const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
+    console.log(`🤖 Puter SDK calling: ${model}...`);
+    const r = await window.puter.ai.chat(messages, { model });
+    const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
     if (!content) throw new Error('empty_response');
-
-    updateAIStatus({ status: 'connected', lastMessage: 'Puter Direct ✓' });
+    updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
     return content;
   } catch (err) {
-    clearTimeout(tid);
-    console.warn('Puter Direct call failed:', err.message || err);
+    console.warn(`Puter SDK: ${model} failed, cascading to Offline:`, err.message || err);
     throw err;
   }
 };
@@ -396,14 +351,14 @@ const processQueue = async () => {
       }
     }
 
-    // LAYER 2 — Puter Direct REST (only if boost is active)
+    // LAYER 2 — Puter SDK Client (only if boost is active)
     if (isPuterBoostActive()) {
       try {
-        const result = await callPuterDirect(messages);
+        const result = await callPuterSDK(messages);
         resolve(result);
         return;
       } catch (puterErr) {
-        console.warn('Puter Direct failed, using Offline RAG fallback for this message:', puterErr.message);
+        console.warn('Puter SDK failed, using Offline RAG fallback for this message:', puterErr.message);
         // Fall through to offline RAG
       }
     }
