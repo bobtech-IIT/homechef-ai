@@ -67,7 +67,18 @@ const PUTER_FALLBACK_MODELS = [
 let isProcessingQueue = false;
 const requestQueue = [];
 
-let lastAIStatus = { status: 'unknown', lastMessage: 'Initializing...', timestamp: null };
+let initialStatus = 'connected';
+try {
+  if (sessionStorage.getItem('homechef_puter_boost_active') === 'false') {
+    initialStatus = 'offline-kb';
+  }
+} catch {}
+
+let lastAIStatus = { 
+  status: initialStatus, 
+  lastMessage: initialStatus === 'connected' ? 'Puter Serverless Active' : 'Offline RAG Active', 
+  timestamp: Date.now() 
+};
 
 const updateAIStatus = (patch) => {
   lastAIStatus = { ...lastAIStatus, ...patch, timestamp: Date.now() };
@@ -335,15 +346,15 @@ const getArchetype = (sys = '') => {
 // Helper to track if Puter Guest Boost is active (explicit user opt-in)
 const isPuterBoostActive = () => {
   try {
-    return sessionStorage.getItem('homechef_puter_boost_active') === 'true';
+    return sessionStorage.getItem('homechef_puter_boost_active') !== 'false';
   } catch {
-    return false;
+    return true;
   }
 };
 
 const deactivatePuterBoost = () => {
   try {
-    sessionStorage.removeItem('homechef_puter_boost_active');
+    sessionStorage.setItem('homechef_puter_boost_active', 'false');
   } catch { /* ignore */ }
 };
 
@@ -429,9 +440,9 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 // Toggles Puter Serverless Boost state in sessionStorage without loading any scripts.
 export async function triggerPuterGuestOnce() {
   try {
-    const active = sessionStorage.getItem('homechef_puter_boost_active') === 'true';
+    const active = sessionStorage.getItem('homechef_puter_boost_active') !== 'false';
     if (active) {
-      sessionStorage.removeItem('homechef_puter_boost_active');
+      sessionStorage.setItem('homechef_puter_boost_active', 'false');
       updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter Boost Disabled' });
       return false;
     } else {
