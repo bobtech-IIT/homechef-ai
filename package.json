@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:puter": "node scripts/deploy-puter.js"
   },
   "dependencies": {
     "@heyputer/puter.js": "^2.5.3",
