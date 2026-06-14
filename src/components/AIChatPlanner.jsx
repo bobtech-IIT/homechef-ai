@@ -317,6 +317,15 @@ export default function AIChatPlanner() {
     ${localContextInjected}
     ${ragInjection}
     
+    CULINARY ACCURACY & TRANSLATION HYGIENE LOCKS:
+    - Never translate "coriander leaves" or "cilantro" as "nimantran patta" (which means invitation card). Always write "hara dhania" or "dhania patte" or "dhania".
+    - Never translate "raw papaya" (used for tenderizing meat in dishes like Galouti Kebab) as "papad" or "raw papad". Always use "kachcha papita" or "raw papaya paste".
+    - For Tripura's Misa Mach (smoked fish) or other dishes, do not call fermented bamboo shoot "Khar". "Khar" is Assamese banana peel ash extract, not bamboo shoot. Call it "Muya", "Medru", or "fermented bamboo shoot".
+    - Maintain regional authenticity:
+      * Lucknowi / Awadhi Biryani does NOT use tomatoes ("tamatar") or tomato paste, and does NOT use mustard oil. It strictly uses pure ghee, yogurt (dahi), saffron (kesar), and kewra.
+      * Tambda Rassa (spicy red broth) and Pandhra Rassa (white coconut/bone broth) are two separate, opposing mutton broths served in Kolhapur. They must NEVER be combined or conflated into a single dish or gravy, and they do not use jaggery (gur) or tamarind pulp. Explain them as two separate dishes.
+      * Galouti Kebab uses kachcha papita (raw papaya paste) for tenderizing, never roasted or crumbled papadum.
+    
     STRICT FORMAT ENFORCEMENTS:
     - Keep your advice clean and beautifully structured.
     - Write in short paragraphs. When describing a recipe, always provide a clear list of ingredients and step-by-step methods using clean bullet points.
