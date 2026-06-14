@@ -423,10 +423,53 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 };
 
 // ─── Opt-in Puter Guest Boost (explicit button only, never auto) ──────────────
+// Lazy-loads the Puter SDK script ONLY when user clicks Boost.
+// This guarantees zero popups on normal page loads.
 export async function triggerPuterGuestOnce() {
-  try {
-    sessionStorage.setItem('homechef_puter_boost_active', 'true');
-  } catch { /* ignore */ }
-  updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
-  return true;
+  // If SDK is already loaded, just activate
+  if (window.puter && window.puter.ai) {
+    try { sessionStorage.setItem('homechef_puter_boost_active', 'true'); } catch {}
+    updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
+    return true;
+  }
+
+  // Dynamically inject the Puter SDK script
+  return new Promise((resolve) => {
+    // Check if script tag already exists (avoid double injection)
+    if (document.querySelector('script[src*="js.puter.com"]')) {
+      // Script exists but SDK not ready yet — wait a moment
+      setTimeout(() => {
+        if (window.puter && window.puter.ai) {
+          try { sessionStorage.setItem('homechef_puter_boost_active', 'true'); } catch {}
+          updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
+          resolve(true);
+        } else {
+          updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter SDK failed to load' });
+          resolve(false);
+        }
+      }, 3000);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.onload = () => {
+      // Give SDK a moment to initialize
+      setTimeout(() => {
+        if (window.puter && window.puter.ai) {
+          try { sessionStorage.setItem('homechef_puter_boost_active', 'true'); } catch {}
+          updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
+          resolve(true);
+        } else {
+          updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter SDK loaded but AI not available' });
+          resolve(false);
+        }
+      }, 2000);
+    };
+    script.onerror = () => {
+      updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter SDK failed to load' });
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
 }
