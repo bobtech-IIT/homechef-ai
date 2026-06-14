@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
 import { queryAI } from '../utils/puterAI';
+import heroImg from '../assets/hero.png';
 
 const PALATE_NAMES = {
   general: 'Others',
@@ -458,7 +459,7 @@ const styles = {
   heroCard: {
     height: '200px',
     borderRadius: '24px',
-    background: 'linear-gradient(135deg, rgba(232,105,42,0.85) 0%, rgba(196,80,26,0.95) 100%), url("/src/assets/hero.png")',
+    background: `linear-gradient(135deg, rgba(232,105,42,0.85) 0%, rgba(196,80,26,0.95) 100%), url("${heroImg}")`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     cursor: 'pointer',

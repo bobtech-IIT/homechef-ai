@@ -9,7 +9,6 @@ import InventoryManager from './components/InventoryManager';
 import GrandmotherVault from './components/GrandmotherVault';
 import SettingsPanel from './components/SettingsPanel';
 import IndianThaliMap from './components/IndianThaliMap';
-import AuditTool from './components/AuditTool';
 
 // Simple production ErrorBoundary to prevent total blank screen on runtime errors (e.g. unexpected data shape, 3rd party script timing).
 // Shows a minimal recovery UI + reload instead of white screen of death.
@@ -109,7 +108,6 @@ export default function App() {
         {activeTab === 2 && <AIChatPlanner />}
         {activeTab === 3 && <InventoryManager onTriggerChatPrompt={handleTriggerChatPrompt} />}
         {activeTab === 4 && <GrandmotherVault />}
-        {activeTab === 5 && <AuditTool />}
       </main>
 
       {/* Persistent Bottom Tab Navigation Bar */}
@@ -119,8 +117,7 @@ export default function App() {
           { icon: '📅', label: 'Planner' },
           { icon: '💬', label: 'Chat' },
           { icon: '🫙', label: 'Pantry' },
-          { icon: '📜', label: 'Vault' },
-          { icon: '🔍', label: 'Audit' }
+          { icon: '📜', label: 'Vault' }
         ].map((tab, idx) => {
           const isActive = idx === activeTab;
           return (
