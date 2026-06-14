@@ -513,50 +513,39 @@ export default function AIChatPlanner() {
       )}
 
       <>
-          {/* Top AI Status Indicator + Force Reconnect (Slice 3: visible health, no more silent "no AI connected") */}
-          <div style={{ ...styles.chatHeader, justifyContent: 'space-between', display: 'flex', width: '100%' }} className="glass-panel">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={styles.avatar}>👵</span>
-              <div style={styles.headerTitleContainer}>
-                <h3 style={styles.headerTitle}>Ask Nani</h3>
-                <div style={{ fontSize: '10px', color: '#7A5540', marginTop: '2px', lineHeight: '1.3' }}>
-                  {aiStatusLabel} 
-                  <button 
-                    onClick={() => {
-                      const ok = clearAICache();
-                      refreshAIStatusLabel();
-                      setToastMessage(ok ? 'Cache cleared' : 'Done');
-                      setTimeout(() => setToastMessage(''), 2800);
-                    }}
-                    style={{ marginLeft: '8px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: 'transparent', color: '#E8692A', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Clear
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      const activated = await triggerPuterGuestOnce();
-                      refreshAIStatusLabel();
-                      setToastMessage(activated ? 'Puter Guest Boost enabled' : 'Using rich local RAG (no login)');
-                      setTimeout(() => setToastMessage(''), 3200);
-                    }}
-                    style={{ marginLeft: '6px', fontSize: '9px', padding: '1px 6px', border: '1px solid #E8692A', background: '#FEF3DC', color: '#C4501A', borderRadius: '4px', cursor: 'pointer' }}
-                    title="Optional: Activate Puter Guest Boost for live AI (no login, no popups)"
-                  >
-                    Boost
-                  </button>
+          {/* ── Premium Nani Header ─────────────────────────────────── */}
+          <div style={styles.chatHeader}>
+            {/* Left: avatar + identity */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+              {/* Glowing avatar ring */}
+              <div style={styles.avatarRing}>
+                <span style={styles.avatar}>👵</span>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h3 style={styles.headerTitle}>Nani's Rasoi Saathi</h3>
+                <div style={styles.headerMeta}>
+                  <span style={styles.liveGreenDot}></span>
+                  <span style={styles.headerSubtitle}>
+                    {profile.culinaryArchetype === 'biohacker' ? '🧬 Bio-Hacker Mode' :
+                     profile.culinaryArchetype === 'cognitive'  ? '🧠 Cognitive Boost Mode' :
+                     '🏡 Classic Home Chef'}
+                    &nbsp;·&nbsp;
+                    {PALATE_NAMES[profile.regionalPalate] || 'Indian'} Palate
+                  </span>
                 </div>
-                <span style={styles.statusLabel}>
-                  No login required • Archetype active
-                </span>
               </div>
             </div>
+
+            {/* Right: download button */}
             {chatHistory.length > 0 && (
-              <button 
+              <button
                 onClick={handleDownloadChat}
                 style={styles.downloadBtn}
-                title="Save"
+                title="Download Recipe Document"
+                onMouseEnter={e => Object.assign(e.currentTarget.style, { background: 'linear-gradient(135deg,#E8692A,#C4501A)', color: '#fff', transform: 'scale(1.04)' })}
+                onMouseLeave={e => Object.assign(e.currentTarget.style, { background: 'rgba(232,105,42,0.08)', color: '#C4501A', transform: 'scale(1)' })}
               >
-                Save
+                📥 Recipe Doc
               </button>
             )}
           </div>
@@ -851,24 +840,67 @@ const styles = {
     position: 'relative'
   },
   chatHeader: {
-    padding: '16px 20px',
+    padding: '14px 20px',
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: '12px',
-    borderBottom: '1px solid rgba(74, 44, 26, 0.1)',
-    zIndex: 10
+    background: 'linear-gradient(135deg, rgba(255,243,220,0.95) 0%, rgba(253,248,242,0.98) 100%)',
+    borderBottom: '1px solid rgba(232,105,42,0.15)',
+    boxShadow: '0 2px 12px rgba(232,105,42,0.08)',
+    zIndex: 10,
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+  },
+  avatarRing: {
+    width: '46px',
+    height: '46px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #E8692A 0%, #C4501A 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 0 0 3px rgba(232,105,42,0.18), 0 4px 12px rgba(232,105,42,0.25)',
+    flexShrink: 0,
   },
   avatar: {
-    fontSize: '28px'
+    fontSize: '24px',
+    lineHeight: 1,
   },
   headerTitleContainer: {
     textAlign: 'left'
   },
   headerTitle: {
-    fontSize: '16px',
-    fontWeight: '800',
+    fontSize: '17px',
+    fontWeight: '900',
     color: '#1A0E08',
-    margin: 0
+    margin: 0,
+    letterSpacing: '-0.3px',
+  },
+  headerMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    marginTop: '3px',
+  },
+  liveGreenDot: {
+    display: 'inline-block',
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: '#16a34a',
+    boxShadow: '0 0 6px rgba(22,163,74,0.7)',
+    animation: 'pulse 2s ease-in-out infinite',
+    flexShrink: 0,
+  },
+  headerSubtitle: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#7A5540',
+    letterSpacing: '0.1px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   statusLabel: {
     fontSize: '11px',
@@ -878,18 +910,21 @@ const styles = {
     display: 'block'
   },
   downloadBtn: {
-    background: '#FEF3DC',
+    background: 'rgba(232,105,42,0.08)',
     color: '#C4501A',
-    border: '1.5px solid rgba(232, 105, 42, 0.2)',
-    borderRadius: '12px',
-    padding: '6px 12px',
-    fontSize: '11px',
+    border: '1.5px solid rgba(232,105,42,0.25)',
+    borderRadius: '20px',
+    padding: '7px 14px',
+    fontSize: '11.5px',
     fontWeight: '700',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    transition: 'all 0.2s ease'
+    gap: '5px',
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    letterSpacing: '0.1px',
   },
   messagesList: {
     flex: 1,
