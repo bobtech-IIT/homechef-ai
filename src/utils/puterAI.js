@@ -289,7 +289,8 @@ const callPuterServerless = async (messages) => {
   let token = null;
   try {
     token = localStorage.getItem('puter.auth.token') ||
-            localStorage.getItem('puter.auth.token.v2') || null;
+            localStorage.getItem('puter.auth.token.v2') ||
+            (window.puter && (window.puter.authToken || window.puter.token)) || null;
   } catch { /* ignore */ }
 
   const headers = { 'Content-Type': 'application/json' };
@@ -384,8 +385,7 @@ const processQueue = async () => {
         resolve(result);
         return;
       } catch (puterErr) {
-        console.warn('Puter Serverless failed, disabling Boost and using Offline RAG:', puterErr.message);
-        deactivatePuterBoost();
+        console.warn('Puter Serverless failed, using Offline RAG fallback for this message:', puterErr.message);
         // Fall through to offline RAG
       }
     }

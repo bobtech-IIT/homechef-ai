@@ -31,8 +31,8 @@
     <meta property="og:url" content="https://homechef-ai-v2.vercel.app" />
     <meta property="og:image" content="/icon-192.png" />
 
-    <!-- Puter JS SDK: NOT loaded here to prevent auto-popup on exhausted guest sessions.
-         Lazy-loaded by triggerPuterGuestOnce() in puterAI.js ONLY when user clicks Boost. -->
+    <!-- Puter JS SDK: loaded passively to generate guest session token for serverless proxy -->
+    <script src="https://js.puter.com/v2/"></script>
   </head>
   <body>
     <div id="root"></div>
