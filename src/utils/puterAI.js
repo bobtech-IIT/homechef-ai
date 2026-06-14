@@ -302,23 +302,23 @@ const callPuterWithMessages = async (messages) => {
   if (!window.puter || !window.puter.ai) {
     throw new Error('Puter SDK not loaded yet');
   }
-  let lastErr = null;
 
-  for (let i = 0; i < PUTER_FALLBACK_MODELS.length; i++) {
-    const model = PUTER_FALLBACK_MODELS[i];
-    try {
-      console.log(`🤖 Puter SDK trying: ${model}${i > 0 ? ` (fallback ${i})` : ''}...`);
-      const r = await window.puter.ai.chat(messages, { model });
-      const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
-      if (!content) throw new Error('empty_response');
-      updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
-      return content;
-    } catch (err) {
-      lastErr = err;
-      console.warn(`Puter SDK: Model ${model} failed:`, err.message || err);
-    }
+  // Try ONLY Puter's default free model (gpt-5-nano).
+  // If guest limits/balance are exhausted, this will trigger the Puter "Low Balance" modal popup EXACTLY ONCE.
+  // Catching this error immediately allows the app to cascade straight to Offline RAG
+  // rather than getting stuck in an infinite loop of 10 consecutive fallback popups.
+  const model = 'gpt-5-nano';
+  try {
+    console.log(`🤖 Puter SDK calling: ${model}...`);
+    const r = await window.puter.ai.chat(messages, { model });
+    const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
+    if (!content) throw new Error('empty_response');
+    updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
+    return content;
+  } catch (err) {
+    console.warn(`Puter SDK: ${model} failed, cascading to Offline:`, err.message || err);
+    throw err;
   }
-  throw lastErr || new Error('All Puter fallback models exhausted');
 };
 
 // ─── Archetype extractor ──────────────────────────────────────────────────────
