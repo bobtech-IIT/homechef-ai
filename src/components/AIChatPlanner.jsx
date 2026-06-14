@@ -112,6 +112,7 @@ export default function AIChatPlanner() {
       const online = navigator.onLine ? 'online' : 'offline';
       let base = `Local RAG + Archetype (no login)`;
       if (s.status === 'connected') base = `Puter Guest Live (optional)`;
+      else if (s.status === 'byok') base = `BYOK Active (${s.lastMessage})`;
       else if (s.status === 'cached') base = `Cached + Local RAG (no login)`;
       else if (s.status === 'offline-kb') base = `Rich Local RAG (zero login)`;
       else if (s.status === 'cleared') base = `Cache cleared — next uses fresh RAG`;

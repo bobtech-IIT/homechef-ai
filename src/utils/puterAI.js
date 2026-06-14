@@ -329,6 +329,21 @@ const getArchetype = (sys = '') => {
   return 'standard';
 };
 
+// Helper to track if Puter Guest Boost is active (explicit user opt-in)
+const isPuterBoostActive = () => {
+  try {
+    return sessionStorage.getItem('homechef_puter_boost_active') === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const deactivatePuterBoost = () => {
+  try {
+    sessionStorage.removeItem('homechef_puter_boost_active');
+  } catch { /* ignore */ }
+};
+
 // ─── Queue Processor ──────────────────────────────────────────────────────────
 const processQueue = async () => {
   if (isProcessingQueue || requestQueue.length === 0) return;
@@ -348,20 +363,26 @@ const processQueue = async () => {
       }
     }
 
-    // LAYER 2 — Puter REST guest
-    try {
-      const result = await callPuterWithMessages(messages);
-      resolve(result);
-    } catch (puterErr) {
-      console.warn('Puter REST failed, using Offline RAG:', puterErr.message);
-      // LAYER 3 — Offline RAG
-      const arch = getArchetype(systemInstruction);
-      updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
-      const fallback = (prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
-        ? getLocalFallbackRecipe(prompt, arch)
-        : getLocalFallbackChat(prompt, arch);
-      resolve(fallback);
+    // LAYER 2 — Puter REST guest (only if boost is active)
+    if (isPuterBoostActive()) {
+      try {
+        const result = await callPuterWithMessages(messages);
+        resolve(result);
+        return;
+      } catch (puterErr) {
+        console.warn('Puter REST failed, disabling Boost and using Offline RAG:', puterErr.message);
+        deactivatePuterBoost();
+        // Fall through to offline RAG
+      }
     }
+
+    // LAYER 3 — Offline RAG
+    const arch = getArchetype(systemInstruction);
+    updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
+    const fallback = (prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
+      ? getLocalFallbackRecipe(prompt, arch)
+      : getLocalFallbackChat(prompt, arch);
+    resolve(fallback);
   } catch (err) {
     reject(err);
   } finally {
@@ -403,8 +424,9 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 
 // ─── Opt-in Puter Guest Boost (explicit button only, never auto) ──────────────
 export async function triggerPuterGuestOnce() {
-  // Headless: We never call Puter's interactive login popup.
-  // Anonymous guest mode is supported natively by our REST handler.
-  updateAIStatus({ status: 'connected', lastMessage: 'Puter guest direct REST active' });
+  try {
+    sessionStorage.setItem('homechef_puter_boost_active', 'true');
+  } catch { /* ignore */ }
+  updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
   return true;
 }
