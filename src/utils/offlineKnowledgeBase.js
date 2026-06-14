@@ -344,15 +344,158 @@ export const getLocalFallbackRecipe = (query = '', archetype = 'standard') => {
 
 
 /**
- * 💬 Layer 5 Fallback: Smart Chat Response Generator (now archetype-aware: standard / biohacker / cognitive)
- * Ensures Nani always gives useful Hinglish even if Puter REST never succeeds.
+ * 💬 Layer 5 Fallback: Smart Chat Response Generator (now RAG-powered)
+ * Searches ALL recipe databases by keyword matching and returns formatted results.
+ * Ensures Nani always gives useful, relevant Hinglish even fully offline.
  */
+
+import { GRANDMOTHER_RECIPES } from '../data/GrandmotherRecipes';
+import { HEALTH_DRINKS } from '../data/HealthDrinks';
+import { INTERNATIONAL_RECIPES } from '../data/InternationalRecipes';
+
+// Build a single flat searchable pool from all sources
+const _buildSearchPool = () => {
+  const pool = [];
+
+  // 1. OFFLINE_RECIPES (regional core)
+  Object.entries(OFFLINE_RECIPES).forEach(([key, r]) => {
+    pool.push({
+      name: r.name,
+      region: key,
+      ingredients: r.ingredients,
+      steps: r.steps,
+      cookTime: r.cookTime || '25 mins',
+      difficulty: r.difficulty || 'Easy',
+      isVegetarian: r.isVegetarian !== false,
+      story: r.story || '',
+      source: 'offline'
+    });
+  });
+
+  // 2. GrandmotherRecipes
+  if (typeof GRANDMOTHER_RECIPES !== 'undefined' && Array.isArray(GRANDMOTHER_RECIPES)) {
+    GRANDMOTHER_RECIPES.forEach(r => {
+      pool.push({
+        name: r.name,
+        region: r.region || 'Indian',
+        ingredients: r.ingredients || [],
+        steps: r.steps || [],
+        cookTime: r.cookTime || '30 mins',
+        difficulty: r.difficulty || 'Medium',
+        isVegetarian: r.isVegetarian !== false,
+        story: r.story || r.description || '',
+        source: 'grandmother'
+      });
+    });
+  }
+
+  // 3. InternationalRecipes
+  if (typeof INTERNATIONAL_RECIPES !== 'undefined' && Array.isArray(INTERNATIONAL_RECIPES)) {
+    INTERNATIONAL_RECIPES.forEach(r => {
+      pool.push({
+        name: r.name,
+        region: 'International',
+        ingredients: r.ingredients || [],
+        steps: r.steps || [],
+        cookTime: r.cookTime || '30 mins',
+        difficulty: r.difficulty || 'Medium',
+        isVegetarian: r.isVegetarian !== false,
+        story: r.description || '',
+        source: 'international'
+      });
+    });
+  }
+
+  // 4. HealthDrinks
+  if (typeof HEALTH_DRINKS !== 'undefined' && Array.isArray(HEALTH_DRINKS)) {
+    HEALTH_DRINKS.forEach(d => {
+      pool.push({
+        name: d.name,
+        region: 'Pan-Indian Wellness',
+        ingredients: d.ingredients || [],
+        steps: d.recipe || [],
+        cookTime: d.prepTime || '10 mins',
+        difficulty: 'Easy',
+        isVegetarian: true,
+        story: d.story || d.objective || '',
+        source: 'health-drink'
+      });
+    });
+  }
+
+  return pool;
+};
+
+let _searchPool = null;
+const getSearchPool = () => {
+  if (!_searchPool) _searchPool = _buildSearchPool();
+  return _searchPool;
+};
+
+// Score a recipe against a query using keyword matching
+const scoreRecipe = (recipe, queryWords) => {
+  let score = 0;
+  const nameLower = recipe.name.toLowerCase();
+  const storyLower = (recipe.story || '').toLowerCase();
+  const regionLower = (recipe.region || '').toLowerCase();
+  const ingredientStr = (recipe.ingredients || []).join(' ').toLowerCase();
+
+  queryWords.forEach(w => {
+    if (w.length < 2) return;
+    if (nameLower.includes(w)) score += 10; // name match is strongest
+    if (regionLower.includes(w)) score += 5;
+    if (ingredientStr.includes(w)) score += 3;
+    if (storyLower.includes(w)) score += 2;
+  });
+
+  return score;
+};
+
+// Format a recipe into a beautiful Nani-style response
+const formatRecipeResponse = (recipe, archetype = 'standard') => {
+  const archNote = archetype === 'biohacker' 
+    ? '\n💡 *Biohacker tip: Ghee kam karo, extra haldi/adrak add karo for anti-inflammatory boost.*'
+    : archetype === 'cognitive'
+      ? '\n💡 *Cognitive tip: Dal/protein badhao, nuts sprinkle karo for brain fuel.*'
+      : '';
+
+  let response = `Namaste beta! **${recipe.name}** ki recipe yeh rahi — step-by-step banane ka tarika:\n\n`;
+  response += `🏷️ **Region:** ${recipe.region} | **Cook Time:** ${recipe.cookTime} | **Difficulty:** ${recipe.difficulty}`;
+  response += recipe.isVegetarian ? ' | 🌱 Vegetarian' : ' | 🍗 Non-Veg';
+  response += '\n\n';
+
+  if (recipe.story) {
+    response += `*${recipe.story}*\n\n`;
+  }
+
+  if (recipe.ingredients && recipe.ingredients.length > 0) {
+    response += '**📝 Ingredients:**\n';
+    recipe.ingredients.forEach(ing => {
+      response += `• ${ing}\n`;
+    });
+    response += '\n';
+  }
+
+  if (recipe.steps && recipe.steps.length > 0) {
+    response += '**👩‍🍳 Step-by-Step Cooking Steps:**\n';
+    recipe.steps.forEach((step, i) => {
+      response += `${i + 1}. ${step}\n`;
+    });
+    response += '\n';
+  }
+
+  response += archNote;
+  response += '\n\nShubh bhojan beta! 💛';
+
+  return response;
+};
+
 export const getLocalFallbackChat = (query = '', archetype = 'standard') => {
   const q = query.toLowerCase();
   const archLabel = archetype === 'biohacker' ? 'Biohacker (low-GI / adaptogen)' : 
                     archetype === 'cognitive' ? 'Cognitive (high-protein / brain fuel)' : 'Standard traditional';
   
-  const words = q.split(/[^a-zA-Z]+/);
+  const words = q.split(/[^a-zA-Z]+/).filter(w => w.length > 1);
   const isGreeting = words.includes('hello') || words.includes('hi') || words.includes('namaste') || words.includes('suno') || words.includes('dhanyawad');
 
   if (isGreeting) {
@@ -368,31 +511,6 @@ Local intelligence + archetype power se har baar ghar jaisa step-by-step jawab d
 Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
   }
 
-  if (q.includes('siddu') || q.includes('himachal')) {
-    return `Namaste beta! Himachal ka traditional **Siddu** ki recipe abhi batati hoon. Yeh ek steamed yeast bread hai jo bahut hi soft aur swadisht hoti hai.
-
-**📝 Ingredients (4-5 logon ke liye):**
-- Gehun ka aata (Wheat flour) — 2 cups
-- Active dry yeast — 1 tsp
-- Gunguna paani (Warm water) — knead karne ke liye
-- Ghee — serving ke liye
-- **Stuffing paste ke liye:**
-  - Khas khas (Poppy seeds, soaked) — 1/2 cup
-  - Akhrot (Walnuts) — 1/4 cup
-  - Green chilies — 2
-  - Adrak (Ginger) — 1 inch
-  - Dhaniya patta (Coriander) + Namak
-
-**👩‍🍳 Step-by-Step Cooking Steps:**
-1. **Dough prepare karein:** Aata, yeast, thoda namak aur gunguna paani milakar soft dough knead karein. Usko 2-3 ghante ke liye dhaanp kar rakh dein taaki double ho jaye.
-2. **Stuffing banayein:** Poppy seeds, akhrot, green chilies, adrak, dhaniya patta aur namak ko thoda paani daal kar coarse paste grind kar lein.
-3. **Shape karein:** Fermented dough se choti ball banayein, usko haath se failayein, beech mein 2 chamach stuffing paste rakhein aur edges ko fold karke seal kar dein (jaise gujiya/momos).
-4. **Steam karein:** Steamer ko grease karke, siddu ko 15-20 minutes ke liye medium heat par steam karein.
-5. **Serve karein:** Garam-garam siddu ko beech se kaat kar, khoob saara garam desi ghee daal kar serve karein.
-
-Shubh bhojan beta! Himachal ki traditional warmth aapki rasoi mein. 🏔️`;
-  }
-  
   if (q.includes('expir') || q.includes('inventory') || q.includes('samaan') || q.includes('kharab')) {
     return `Inventory warning system checking... 🫙
 
@@ -405,92 +523,37 @@ Aapke offline record ke mutabik sabhi items safe hain. Agar aapko koi specific i
 Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarat select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
   }
 
-  if (q.includes('bajre') || q.includes('bajra') || (q.includes('haryana') && q.includes('khichdi')) || q.includes('bajre ki khichdi')) {
-    // Archetype-aware rich fallbacks — the exact user "Nani, mujhe Bajre..." prompt must succeed with useful steps
-    if (archetype === 'biohacker') {
-      return `Arre waah beta! Aapke **Biohacker** palate ke liye Haryana ki low-GI **Bajre ki Khichdi** — blood sugar steady rakhe aur energy clean de. Adaptogens se boost!
+  // === SMART RECIPE SEARCH — search all databases by keyword matching ===
+  const pool = getSearchPool();
+  const queryWords = q.split(/[^a-zA-Z]+/).filter(w => w.length > 2);
+  
+  if (queryWords.length > 0) {
+    const scored = pool.map(recipe => ({
+      recipe,
+      score: scoreRecipe(recipe, queryWords)
+    })).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
 
-**📝 Ingredients (4-5 logon ke liye, clean version):**
-- Bajra (pearl millet) — 1 cup, achhe se dhoya hua (low-GI star)
-- Moong dal (thodi si, optional) — 2-3 tbsp
-- Paani — 4-5 cups (adjust)
-- Namak + haldi (extra pinch for anti-inflam) — swaad anusaar
-- Cold-pressed virgin coconut or avocado oil (thoda) ya measured desi ghee (1-2 tbsp max)
-- Fresh adrak + haldi + optional Tulsi/Holy Basil — adaptogen boost
-- Hand-churned white butter or thick Greek-style yogurt — serving ke liye (probiotic angle)
-- Jeera, fresh coriander
-
-**👩‍🍳 Step-by-Step (Biohacker Clean Slow Tarika):**
-1. Bajre ko raat bhar ya 4-5 ghante bhigokar, achhe se dholo (fiber intact rakho).
-2. Bhari handi mein 4 cups garam paani, namak, haldi, adrak, thoda oil/ghee daal kar ubaal lao.
-3. Bhiga bajra + moong + extra haldi/adrak daal ke dheemi aanch par 40-50 min pakao. Hilate raho, garam paani se adjust for creamy not gluey texture.
-4. Last 1-2 min mein measured ghee/oil + jeera tadka. Bahut zyada ghee mat daalna — low-GI ke liye control.
-5. Garam serve. Upar adaptogen garnish (coriander + thoda fresh haldi grate) + clean dollop of yogurt or light makkhan. Zen plating: simple earthen bowl, minimal, natural greens pop.
-
-Yeh version blood sugar spikes nahi karega, sustained energy dega. Ghee kam, adaptogens zyada — perfect for modern biohacker rasoi! Cloud wapas aaye toh bhi yahi smart tarika suggest karungi. Shubh bhojan beta! 🌿`;
-    } else if (archetype === 'cognitive') {
-      return `Arre waah beta! **Cognitive Hustler** ke liye Haryana ki **Bajre ki Khichdi** — sustained brain stamina + protein power wali version. Ragi/ancient grain notes add kar sakte ho agar available ho.
-
-**📝 Ingredients (4-5 logon ke liye, brain-fuel):**
-- Bajra (pearl millet) — 1 cup, dhoya hua (steady glucose for focus)
-- Moong dal — 3-4 tbsp (protein)
-- Paani — 4-5 cups
-- Namak + haldi + jeera — swaad
-- Desi ghee — 3 tbsp (MCT like brain fuel)
-- Hand-churned makkhan (white butter) — serving
-- Optional boosters: crushed walnuts or flax seeds (if pantry mein), extra adrak
-- Garam masala light + fresh coriander
-
-**👩‍🍳 Step-by-Step (Cognitive Power Tarika):**
-1. Bajra bhigao 4-5 hrs minimum, dholo.
-2. Handi mein paani + namak + haldi + adrak ubaal. Bajra + moong daalo.
-3. Dheemi aanch 40-50 min, continuous stir for creamy texture (no lumps = steady energy).
-4. Last mein full ghee + light jeera tadka. Protein + fat combo for focus.
-5. Serve hot with generous makkhan dollops + thandi lassi. Dramatic plating: bold contrast bowl, walnut sprinkle on top for omega-3 pop, fresh herbs for color strike.
-
-Haryana fields ki warmth + modern brain fuel. Yeh khichdi dimag ko long meetings ke liye ready rakhegi! Cloud aa jaaye toh bhi yahi powerful version. Shubh bhojan beta! 🔥`;
-    } else {
-      // Standard traditional (default rich Hinglish as previously enriched)
-      return `Arre waah beta! Haryana ki **Bajre ki Khichdi** maangi hai na? Bahut hi pyari aur sehatmand dish hai — sardi mein toh jaan hai!
-
-**📝 Ingredients (4-5 logon ke liye):**
-- Bajra (pearl millet) — 1 cup, achhe se dhoya hua
-- Moong dal (optional, thodi si) — 2-3 tbsp
-- Paani — 4-5 cups (adjust for consistency)
-- Namak + haldi — swaad anusaar
-- Ghee — 3-4 bade chamach (asli desi ghee best!)
-- Hand-churned white butter (makkhan) — serving ke liye
-- Garam masala + jeera (optional tadka)
-- Fresh coriander + adrak — thodi si
-
-**👩‍🍳 Step-by-Step (Traditional Slow-Cooked Tarika):**
-1. Bajre ko raat bhar bhigokar rakho ya kam se kam 4-5 ghante. Phir usko achhe se dholo.
-2. Ek bhari handi mein 4 cups paani daalo, namak + haldi + thodi si ghee. Ubaal aane do.
-3. Bhiga hua bajra + moong dal daal kar dheemi aanch par 40-50 minute dheere dheere pakao. Beech-beech mein hilate raho taaki na chipke. Agar paani kam pade toh garam paani add karte raho — yeh khichdi patli-pasand hoti hai!
-4. Jab bajra bilkul gal jaaye aur ek creamy, comforting texture aa jaaye, toh last mein 2 bade chamach desi ghee aur thoda jeera tadka (optional) daal do.
-5. Garam-garam serve karo. Upar se haath se makkhan (white butter) ki moti moti dollops + thandi meethi lassi ke saath. 
-
-Yeh dish Haryana ke kheton ki mehak laati hai. Ghee aur makkhan kam mat karna — yahi iska asli swaad hai! 
-
-Koi baat nahi agar cloud wapas aa jaaye, main phir bhi yahi traditional tarika hi bataungi. Shubh bhojan beta! 💛`;
+    if (scored.length > 0) {
+      const best = scored[0];
+      // If score is decent (at least one good keyword match), return formatted recipe
+      if (best.score >= 3) {
+        return formatRecipeResponse(best.recipe, archetype);
+      }
     }
   }
+
+  // === RANDOM RECIPE FALLBACK — pick a random recipe instead of always Bajra Khichdi ===
+  const randomIdx = Math.floor(Math.random() * pool.length);
+  const randomRecipe = pool[randomIdx];
   
-  // Default smart template — always helpful + archetype note (no more plain "offline mode" generic)
-  const defaultArchetypeTip = archetype === 'biohacker' 
-    ? ' (Clean low-GI twist try karo: kam ghee, extra haldi/adrak)' 
-    : archetype === 'cognitive' 
-      ? ' (Protein boost: dal badhao + nuts sprinkle if possible)' 
-      : '';
-  return `Ji bilkul beta! Main samajh gaya. (${archLabel})
+  return `Ji bilkul beta! (${archLabel})
 
-Main abhi offline local database me isko search kar raha hoon lekin yeh lo — ek bahut hi swadisht aur jaldi banne wali comfort recipe${defaultArchetypeTip}:
+Aapki request ke liye exact match nahi mila offline database mein, lekin yeh lo — ek swadisht recipe jo aapko pasand aayegi:
 
-**Homestyle Bajra-Mix Veg Khichdi** (ya jo bhi aapke paas hai usse bana lo).
-- Jo daal-chawal/bajra ho, usko ghee mein jeera + haldi + namak daal kar 15-20 min dheemi aanch par paka do.
-- Last mein fresh dhaniya + thoda ghee upar se.
-
-Aap specific state likho (jaise 'Haryana Bajre ki Khichdi', 'Bengal Ilish', 'Punjab Sarson') — main aapko exact traditional steps offline bhi de dungi. 
-
-Jab connection wapas aayega tab aur gehri baatein karenge. Aaj kya special bana rahe ho?`;
+**🍽️ ${randomRecipe.name}**
+${randomRecipe.story ? `*${randomRecipe.story}*\n` : ''}
+${randomRecipe.ingredients.length > 0 ? '**📝 Ingredients:**\n' + randomRecipe.ingredients.slice(0, 8).map(i => '• ' + i).join('\n') + '\n' : ''}
+${randomRecipe.steps.length > 0 ? '\n**👩‍🍳 Steps:**\n' + randomRecipe.steps.slice(0, 6).map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n' : ''}
+Koi specific recipe chahiye toh dish ka naam likho — main database mein dhoondh dungi! Shubh bhojan beta! 💛`;
 };
+
