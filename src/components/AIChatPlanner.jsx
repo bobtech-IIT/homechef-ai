@@ -198,18 +198,14 @@ export default function AIChatPlanner() {
     let localContextInjected = "";
     const queryLower = userText.toLowerCase();
 
-    // 1. Scan Grandmother Heirloom Recipes
+    // 1. Scan Grandmother Heirloom Recipes (Strict match by name)
     const matchGrandmother = GRANDMOTHER_RECIPES.filter(r => 
-      queryLower.includes(r.name.toLowerCase()) ||
-      (r.region && queryLower.includes(r.region.toLowerCase())) ||
-      r.ingredients.some(ing => queryLower.includes(ing.split(' ')[0].toLowerCase()))
+      queryLower.includes(r.name.toLowerCase())
     );
 
-    // 2. Scan Nani's Health Drinks
+    // 2. Scan Nani's Health Drinks (Strict match by name)
     const matchHealth = HEALTH_DRINKS.filter(hd => 
-      queryLower.includes(hd.name.toLowerCase()) ||
-      queryLower.includes(hd.category.toLowerCase().split(' ')[0]) ||
-      hd.ingredients.some(ing => queryLower.includes(ing.split(' ')[0].toLowerCase()))
+      queryLower.includes(hd.name.toLowerCase())
     );
 
     if (matchGrandmother.length > 0) {
@@ -239,7 +235,7 @@ export default function AIChatPlanner() {
     const ragResults = retrieveRelevantKnowledge(userText, profile, inventory, 4);
     const ragContext = formatRAGContext(ragResults);
     const ragInjection = ragContext 
-      ? `\n\n[OFFLINE RAG RETRIEVED LOCAL KNOWLEDGE — use this as primary ground truth for accuracy, do not contradict these passages]\n${ragContext}`
+      ? `\n\n[LOCAL DATABASE RECIPES & CONTEXT — Use these passages as reference if they match the user's request. If the user asks for a specific recipe, dish, or query that is not covered in these local passages, you can and should use your own knowledge to provide a high-quality, authentic step-by-step recipe, keeping in mind the user's regional palate, diet preference, and archetype style. Do not falsely claim a recipe is missing from the database if you can generate it.]\n${ragContext}`
       : '';
     if (archetype === 'biohacker') {
       archetypeInstruction = `
@@ -290,9 +286,18 @@ export default function AIChatPlanner() {
       // Auto-save recipe to offline RAG chunks
       if (containsRecipeIndicators(response)) {
         let dishName = "Nani's AI Recipe";
-        const firstLines = response.split('\n')[0].trim();
-        if (firstLines.length > 5 && firstLines.length < 50) {
-          dishName = firstLines.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+        const boldMatches = response.match(/\*\*([^*]+)\*\*/);
+        if (boldMatches && boldMatches[1] && boldMatches[1].trim().length > 3 && boldMatches[1].trim().length < 50) {
+          dishName = boldMatches[1].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+        } else {
+          const lines = response.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          for (const line of lines) {
+            const cleanLine = line.replace(/[#*.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+            if (cleanLine.length > 3 && cleanLine.length < 50 && !cleanLine.toLowerCase().includes('namaste') && !cleanLine.toLowerCase().includes('beta') && !cleanLine.toLowerCase().includes('hello') && !cleanLine.toLowerCase().includes('hey')) {
+              dishName = cleanLine;
+              break;
+            }
+          }
         }
         saveCustomRAGChunk(
           dishName, 
