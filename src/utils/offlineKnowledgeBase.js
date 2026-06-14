@@ -553,10 +553,10 @@ Aap aaj kya banana chahte hain? Batao, main madad karti hoon!`;
 Aapke offline record ke mutabik sabhi items safe hain. Agar aapko koi specific item use karna hai (jaise Coriander, Tomatoes), toh mujhe batayein, main uske hisab se offline database se swadisht matching recipe dhoondh nikalunga!`;
   }
 
-  if (q.includes('diet') || q.includes('health') || q.includes('restriction') || q.includes('parhez')) {
+  if (q.includes('diet lock') || q.includes('diet preference') || q.includes('restriction') || q.includes('parhez')) {
     return `Diet lock system active! 🛡️
-
-Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarat select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
+ 
+ Aapke setup wizard preferences ke mutabik, hamare vegetarian aur regional checks fully active hain. Agar aapne Gujarat select kiya hai, toh hamara offline engine non-veg options ko strictly block rakhega. Aap bilkul befikra hokar cooking kariye!`;
   }
 
   // === SMART RECIPE SEARCH — search all databases by keyword matching ===

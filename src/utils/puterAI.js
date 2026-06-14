@@ -67,10 +67,10 @@ const PUTER_FALLBACK_MODELS = [
 let isProcessingQueue = false;
 const requestQueue = [];
 
-let initialStatus = 'connected';
+let initialStatus = 'offline-kb';
 try {
-  if (sessionStorage.getItem('homechef_puter_boost_active') === 'false') {
-    initialStatus = 'offline-kb';
+  if (sessionStorage.getItem('homechef_puter_boost_active') === 'true') {
+    initialStatus = 'connected';
   }
 } catch {}
 
@@ -285,7 +285,42 @@ const callBYOK = async (messages, byok) => {
 };
 
 // ─── Puter SDK Client (No popup visible, suppressed via CSS) ──────────────────────
+const loadPuterSDK = () => {
+  return new Promise((resolve, reject) => {
+    if (window.puter && window.puter.ai) {
+      resolve(window.puter);
+      return;
+    }
+    
+    // Check if script already exists in DOM
+    let script = document.querySelector('script[src*="js.puter.com"]');
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://js.puter.com/v2/';
+      document.head.appendChild(script);
+    }
+    
+    let checkCount = 0;
+    const interval = setInterval(() => {
+      if (window.puter && window.puter.ai) {
+        clearInterval(interval);
+        resolve(window.puter);
+      } else if (checkCount > 40) { // 4 seconds timeout
+        clearInterval(interval);
+        reject(new Error('Puter SDK load timeout'));
+      }
+      checkCount++;
+    }, 100);
+  });
+};
+
 const callPuterSDK = async (messages) => {
+  try {
+    await loadPuterSDK();
+  } catch (err) {
+    throw new Error('Puter SDK not loaded: ' + err.message);
+  }
+
   if (!window.puter || !window.puter.ai) {
     throw new Error('Puter SDK not loaded yet');
   }
@@ -323,9 +358,9 @@ const getArchetype = (sys = '') => {
 // Helper to track if Puter Guest Boost is active (explicit user opt-in)
 const isPuterBoostActive = () => {
   try {
-    return sessionStorage.getItem('homechef_puter_boost_active') !== 'false';
+    return sessionStorage.getItem('homechef_puter_boost_active') === 'true';
   } catch {
-    return true;
+    return false;
   }
 };
 
@@ -391,7 +426,7 @@ const processQueue = async () => {
     updateAIStatus({ status: 'offline-kb', lastMessage: `Offline RAG (${arch})` });
     
     const coreQuery = extractCoreQuery(prompt);
-    const hasGreeted = typeof prompt === 'string' && (prompt.includes('Nani:') || prompt.includes('nani:'));
+    const hasGreeted = Array.isArray(messages) && messages.some(m => m.role === 'assistant');
     const fallback = (coreQuery.toLowerCase().includes('plan') || coreQuery.toLowerCase().includes('menu') || prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
       ? getLocalFallbackRecipe(coreQuery, arch)
       : getLocalFallbackChat(coreQuery, arch, hasGreeted);
@@ -439,7 +474,7 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 // Toggles Puter Serverless Boost state in sessionStorage without loading any scripts.
 export async function triggerPuterGuestOnce() {
   try {
-    const active = sessionStorage.getItem('homechef_puter_boost_active') !== 'false';
+    const active = sessionStorage.getItem('homechef_puter_boost_active') === 'true';
     if (active) {
       sessionStorage.setItem('homechef_puter_boost_active', 'false');
       updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter Boost Disabled' });
@@ -447,6 +482,8 @@ export async function triggerPuterGuestOnce() {
     } else {
       sessionStorage.setItem('homechef_puter_boost_active', 'true');
       updateAIStatus({ status: 'connected', lastMessage: 'Puter Serverless Proxy Active' });
+      // Dynamically load the Puter SDK script
+      loadPuterSDK().catch(e => console.warn('Pre-loading Puter SDK failed:', e));
       return true;
     }
   } catch {
