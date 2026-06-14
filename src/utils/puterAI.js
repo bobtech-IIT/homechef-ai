@@ -18,7 +18,7 @@
 
 import { getLocalFallbackRecipe, getLocalFallbackChat } from './offlineKnowledgeBase';
 
-const AI_CACHE_KEY    = 'homechef_ai_cache_v2';
+const AI_CACHE_KEY    = 'homechef_ai_cache_v3';
 const BYOK_KEY        = 'homechef_byok';
 const MAX_CACHE_AGE   = 24 * 60 * 60 * 1000; // 24h
 const TIMEOUT_MS      = 14000;
@@ -396,7 +396,7 @@ const processQueue = async () => {
     const fallback = (prompt.toLowerCase().includes('plan') || prompt.toLowerCase().includes('menu'))
       ? getLocalFallbackRecipe(prompt, arch)
       : getLocalFallbackChat(prompt, arch);
-    resolve(fallback);
+    resolve(fallback, false);
   } catch (err) {
     reject(err);
   } finally {
@@ -427,7 +427,7 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
     }
 
     requestQueue.push({
-      resolve: (val) => { setCache(cKey, val); resolve(val); },
+      resolve: (val, shouldCache) => { if (shouldCache !== false) setCache(cKey, val); resolve(val); },
       reject: () => resolve('Beta, abhi thoda technical issue hai. Ek baar phir try karo! 🙏'),
       messages, prompt: userPromptText, systemInstruction, model,
     });

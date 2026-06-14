@@ -91,7 +91,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
     } else {
       dispatch({ type: 'RESET_ALL' });
       sessionStorage.removeItem('homechef_session_state');
-      localStorage.removeItem('homechef_ai_cache_v2');
+      localStorage.removeItem('homechef_ai_cache_v3');
       clearAICache();
       setResetConfirm(false);
       onClose();
