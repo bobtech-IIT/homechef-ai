@@ -111,8 +111,24 @@ export function AppProvider({ children }) {
       localStorage.removeItem('homechef_state_v2');
       localStorage.removeItem('homechef_state');
       
+      // Check session cookie to detect if browser/PWA was closed and reopened.
+      // A cookie without an expiry date (session cookie) is cleared when the window/PWA process is closed.
+      const cookieName = 'homechef_active_session';
+      const hasCookie = typeof document !== 'undefined' && document.cookie.split(';').some(item => item.trim().startsWith(cookieName + '='));
+      
+      if (!hasCookie) {
+        console.log('🧹 No active session cookie — clearing session state to start fresh!');
+        sessionStorage.removeItem(STORAGE_KEY);
+      } else {
+        console.log('🔄 Session cookie active — checking for saved state.');
+      }
+      
+      // Set the session cookie so refreshes inside the same session don't reset it
+      if (typeof document !== 'undefined') {
+        document.cookie = `${cookieName}=true; path=/; SameSite=Lax`;
+      }
+      
       // Use sessionStorage: state lives only while the tab/PWA is open.
-      // Closing the tab or PWA clears it → next open starts fresh Setup Wizard.
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);

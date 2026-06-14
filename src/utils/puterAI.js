@@ -273,53 +273,56 @@ const callBYOK = async (messages, byok) => {
   throw new Error(`Unknown provider: ${provider}`);
 };
 
-// ─── Puter REST Guest (No popup, no login) ────────────────────────────────────
-const callPuterREST = async () => {
+// ─── Puter Serverless Proxy (No popup, no login) ────────────────────────────────
+const callPuterServerless = async (messages) => {
   let token = null;
   try {
     token = localStorage.getItem('puter.auth.token') ||
-            localStorage.getItem('puter.auth.token.v2') ||
-            (window.puter && (window.puter.authToken || window.puter.token)) || null;
+            localStorage.getItem('puter.auth.token.v2') || null;
   } catch { /* ignore */ }
-
-  console.log("🔍 DEBUG [callPuterREST] token found:", token);
-  console.log("🔍 DEBUG [callPuterREST] window.puter:", window.puter ? {
-    authToken: window.puter.authToken,
-    token: window.puter.token,
-    isSignedIn: typeof window.puter.auth?.isSignedIn === 'function' ? window.puter.auth.isSignedIn() : 'N/A'
-  } : "undefined");
 
   const headers = { 'Content-Type': 'application/json' };
   if (token && token !== 'null' && token !== 'undefined') {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Puter REST is called with the messages passed in; we call it in retry wrapper below
-  return headers; // return headers for use in the retry fn
-};
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
 
-const callPuterWithMessages = async (messages) => {
-  if (!window.puter || !window.puter.ai) {
-    throw new Error('Puter SDK not loaded yet');
-  }
-
-  // Try ONLY Puter's default free model (gpt-5-nano).
-  // If guest limits/balance are exhausted, this will trigger the Puter "Low Balance" modal popup EXACTLY ONCE.
-  // Catching this error immediately allows the app to cascade straight to Offline RAG
-  // rather than getting stuck in an infinite loop of 10 consecutive fallback popups.
-  const model = 'gpt-5-nano';
   try {
-    console.log(`🤖 Puter SDK calling: ${model}...`);
-    const r = await window.puter.ai.chat(messages, { model });
-    const content = typeof r === 'string' ? r : (r?.message?.content?.[0]?.text || r?.message?.content || r?.text || JSON.stringify(r));
+    console.log('📡 Fetching server-side Puter AI proxy (/api/chat)...');
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers,
+      body: JSON.stringify({
+        messages,
+        model: 'gpt-4o-mini'
+      })
+    });
+    clearTimeout(tid);
+
+    if (res.status === 402) {
+      throw new Error('insufficient_funds');
+    }
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`server_error_${res.status}: ${errText.slice(0, 100)}`);
+    }
+
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
     if (!content) throw new Error('empty_response');
-    updateAIStatus({ status: 'connected', lastMessage: `Puter guest (${model}) ✓` });
+
+    updateAIStatus({ status: 'connected', lastMessage: 'Puter Serverless ✓' });
     return content;
   } catch (err) {
-    console.warn(`Puter SDK: ${model} failed, cascading to Offline:`, err.message || err);
+    clearTimeout(tid);
+    console.warn('Puter Serverless call failed:', err.message || err);
     throw err;
   }
 };
+
 
 // ─── Archetype extractor ──────────────────────────────────────────────────────
 const getArchetype = (sys = '') => {
@@ -363,14 +366,14 @@ const processQueue = async () => {
       }
     }
 
-    // LAYER 2 — Puter REST guest (only if boost is active)
+    // LAYER 2 — Puter Serverless proxy (only if boost is active)
     if (isPuterBoostActive()) {
       try {
-        const result = await callPuterWithMessages(messages);
+        const result = await callPuterServerless(messages);
         resolve(result);
         return;
       } catch (puterErr) {
-        console.warn('Puter REST failed, disabling Boost and using Offline RAG:', puterErr.message);
+        console.warn('Puter Serverless failed, disabling Boost and using Offline RAG:', puterErr.message);
         deactivatePuterBoost();
         // Fall through to offline RAG
       }
@@ -423,53 +426,20 @@ export const queryAI = (prompt, systemInstruction = '', model = 'gpt-4o-mini') =
 };
 
 // ─── Opt-in Puter Guest Boost (explicit button only, never auto) ──────────────
-// Lazy-loads the Puter SDK script ONLY when user clicks Boost.
-// This guarantees zero popups on normal page loads.
+// Toggles Puter Serverless Boost state in sessionStorage without loading any scripts.
 export async function triggerPuterGuestOnce() {
-  // If SDK is already loaded, just activate
-  if (window.puter && window.puter.ai) {
-    try { sessionStorage.setItem('homechef_puter_boost_active', 'true'); } catch {}
-    updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
-    return true;
-  }
-
-  // Dynamically inject the Puter SDK script
-  return new Promise((resolve) => {
-    // Check if script tag already exists (avoid double injection)
-    if (document.querySelector('script[src*="js.puter.com"]')) {
-      // Script exists but SDK not ready yet — wait a moment
-      setTimeout(() => {
-        if (window.puter && window.puter.ai) {
-          try { sessionStorage.setItem('homechef_puter_boost_active', 'true'); } catch {}
-          updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
-          resolve(true);
-        } else {
-          updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter SDK failed to load' });
-          resolve(false);
-        }
-      }, 3000);
-      return;
+  try {
+    const active = sessionStorage.getItem('homechef_puter_boost_active') === 'true';
+    if (active) {
+      sessionStorage.removeItem('homechef_puter_boost_active');
+      updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter Boost Disabled' });
+      return false;
+    } else {
+      sessionStorage.setItem('homechef_puter_boost_active', 'true');
+      updateAIStatus({ status: 'connected', lastMessage: 'Puter Serverless Proxy Active' });
+      return true;
     }
-
-    const script = document.createElement('script');
-    script.src = 'https://js.puter.com/v2/';
-    script.onload = () => {
-      // Give SDK a moment to initialize
-      setTimeout(() => {
-        if (window.puter && window.puter.ai) {
-          try { sessionStorage.setItem('homechef_puter_boost_active', 'true'); } catch {}
-          updateAIStatus({ status: 'connected', lastMessage: 'Puter Guest Active (optional)' });
-          resolve(true);
-        } else {
-          updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter SDK loaded but AI not available' });
-          resolve(false);
-        }
-      }, 2000);
-    };
-    script.onerror = () => {
-      updateAIStatus({ status: 'offline-kb', lastMessage: 'Puter SDK failed to load' });
-      resolve(false);
-    };
-    document.head.appendChild(script);
-  });
+  } catch {
+    return false;
+  }
 }
